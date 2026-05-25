@@ -1,10 +1,8 @@
 # TODO
 
-ToDos for the Triple A Project, feel free to add further ToDos.
+TODOs for the Triple A Project, feel free to add further TODOs.
 
 ## 1. Data Cleaning and Preparation
-
-Tasks related to data cleaning.
 
 - [ ] Completing h3 hexa encoding
 - [ ] Adding Longitute Latitute values when other locational data is given
@@ -19,4 +17,4 @@ Tasks related to data cleaning.
 
 # DONE
 
-- [x] Create GitHub organization tood-md
+- [x] Started data cleaning and preparing.
