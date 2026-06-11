@@ -19,6 +19,7 @@ dependencies = [
     "shapely>=2.1.2",
     "h3>=4.1.0",
     "osmnx>=2.0.7",
+    "holidays>=0.98",
 ]
 
 [tool.uv]
