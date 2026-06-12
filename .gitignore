@@ -56,7 +56,9 @@ Thumbs.db
 **/*.quarto_ipynb
 
 # data
-.parquet
-.csv
+data/**/*.parquet
+data/**/*.geoparquet
+data/**/*.csv
+models/**/*.pt
 
 
