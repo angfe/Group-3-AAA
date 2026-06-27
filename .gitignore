@@ -61,4 +61,9 @@ data/**/*.geoparquet
 data/**/*.csv
 models/**/*.pt
 
+# csv
+csv/
+
+# .cache
+.cache
 
