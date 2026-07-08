@@ -4,6 +4,13 @@ from dataclasses import dataclass
 # --------------------------------------------------
 # Set the run mode below to "sample" or "full"
 RUN_MODE = "sample" # "sample" or "full"
+
+# Set App Token for Chicago Data (see more details in Notebooks "00_01_data_loader.ipynb")
+APP_TOKEN = "***"
+# --------------------------------------------------
+# Start and end date of taxi and weather data
+START_DATE = "2024-01-01T00:00:00"
+END_DATE = "2026-05-01T00:00:00"
 # --------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +29,8 @@ class DataPaths:
     bronze_weatherdata: Path
     bronze_census_tracts: Path
     bronze_community_areas: Path
+    bronze_osm_geo: Path
+    bronze_osm: Path
     
     # Silver
     silver_taxi_trips: Path
@@ -29,6 +38,7 @@ class DataPaths:
     silver_census_tracts: Path
     silver_community_areas: Path
     silver_hexagon: Path
+    silver_boundary: Path
     
     # Gold
     gold_taxi_trips: Path
@@ -56,6 +66,8 @@ PATHS_BY_MODE = {
         bronze_weatherdata=DATA_DIR / "sample" / "bronze_weatherdata.parquet",
         bronze_census_tracts=DATA_DIR / "sample" / "bronze_Census_Tracts.parquet",
         bronze_community_areas=DATA_DIR / "sample" / "bronze_Community_Areas.parquet",
+        bronze_osm_geo=DATA_DIR / "sample" / "bronze_osm_chicago_pois.geoparquet",
+        bronze_osm=DATA_DIR / "sample" / "bronze_osm_chicago_pois.parquet",
         
         # Silver
         silver_taxi_trips=DATA_DIR / "sample" / "silver_taxi_sample.parquet",
@@ -63,6 +75,7 @@ PATHS_BY_MODE = {
         silver_census_tracts=DATA_DIR / "sample" / "silver_census_tracts.geoparquet",
         silver_community_areas=DATA_DIR / "sample" / "silver_community_areas.geoparquet",
         silver_hexagon=DATA_DIR / "sample" / "silver_dim_h3_chicago_7.parquet",
+        silver_boundary=DATA_DIR / "sample" / "silver_chicago_boundary_from_census_tracts_H3_RESOLUTION.parquet",
         
         # Gold
         gold_taxi_trips=DATA_DIR / "sample" / "gold_taxi_sample.parquet",
@@ -90,13 +103,16 @@ PATHS_BY_MODE = {
         bronze_weatherdata=DATA_DIR / "processed_data" / "bronze_weatherdata.parquet",
         bronze_census_tracts=DATA_DIR / "processed_data" / "bronze_Census_Tracts.parquet",
         bronze_community_areas=DATA_DIR / "processed_data" / "bronze_Community_Areas.parquet",
+        bronze_osm_geo=DATA_DIR / "processed_data" / "bronze_osm_chicago_pois.geoparquet",
+        bronze_osm=DATA_DIR / "processed_data" / "bronze_osm_chicago_pois.parquet",
         
         # Silver
         silver_taxi_trips=DATA_DIR / "processed_data" / "silver_taxi.parquet",
         silver_weatherdata=DATA_DIR / "processed_data" / "silver_weatherdata.parquet",
         silver_census_tracts=DATA_DIR / "processed_data" / "silver_census_tracts.geoparquet",
         silver_community_areas=DATA_DIR / "processed_data" / "silver_community_areas.geoparquet",
-        silver_hexagon=DATA_DIR / "processed_data" / "silver_dim_h3_chicago_7.parquet",
+        silver_hexagon=DATA_DIR / "processed_data" / "silver_dim_h3_chicago_8.parquet",
+        silver_boundary=DATA_DIR / "processed_data" / "silver_chicago_boundary_from_census_tracts_H3_RESOLUTION.parquet",
         
         # Gold
         gold_taxi_trips=DATA_DIR / "processed_data" / "gold_taxi.parquet",
