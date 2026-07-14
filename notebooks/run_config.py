@@ -6,7 +6,7 @@ from dataclasses import dataclass
 RUN_MODE = "full" # "sample" or "full"
 
 # Set App Token for Chicago Data (see more details in Notebooks "00_01_data_loader.ipynb")
-APP_TOKEN = "6V8zn4xKKrLMJIYGC7fPNBlcs"
+APP_TOKEN = "***"
 # --------------------------------------------------
 # Start and end date of taxi and weather data
 START_DATE = "2024-01-01T00:00:00"
@@ -99,7 +99,7 @@ PATHS_BY_MODE = {
         raw_community_areas=DATA_DIR / "raw_data" / "Community_Areas.csv",
         
         # Bronze
-        bronze_taxi_trips=DATA_DIR / "processed_data" / "bronze_taxi_sample.parquet",
+        bronze_taxi_trips=DATA_DIR / "processed_data" / "bronze_taxi.parquet",
         bronze_weatherdata=DATA_DIR / "processed_data" / "bronze_weatherdata.parquet",
         bronze_census_tracts=DATA_DIR / "processed_data" / "bronze_Census_Tracts.parquet",
         bronze_community_areas=DATA_DIR / "processed_data" / "bronze_Community_Areas.parquet",
