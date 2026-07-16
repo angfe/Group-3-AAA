@@ -3,7 +3,7 @@ from pathlib import Path
 
 # --------------------------------------------------
 # Set the run mode below to "sample" or "full"
-RUN_MODE = "sample"
+RUN_MODE = "full"
 
 # Gold datasets generated on every run.
 GOLD_TIME_UNITS = ("1h", "4h")
@@ -25,6 +25,7 @@ MODE_DIR = DATA_DIR / RUN_MODE
 RAW_DIR = MODE_DIR / "raw_data"
 PROCESSED_DIR = MODE_DIR / "processed_data"
 TRAIN_TEST_DIR = MODE_DIR / "train_test_data"
+MODELS_DIR = PROJECT_ROOT / "models" / RUN_MODE
 
 # The existing sample files use a taxi-specific suffix and H3 resolution 7.
 TAXI_SUFFIX = "_sample" if RUN_MODE == "sample" else ""
