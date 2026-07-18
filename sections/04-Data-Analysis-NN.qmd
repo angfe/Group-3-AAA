@@ -1,0 +1,7 @@
+# Data Analysis
+
+More advanced NN model:
+
+2 NNs one for high, one for low demand:
+1. Classifier predicts probability for high demand 
+2. final prediction = p_high * high_model_pred + (1 - p_high) * low_model_pred

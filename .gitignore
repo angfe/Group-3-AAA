@@ -67,3 +67,5 @@ csv/
 # .cache
 .cache
 
+# test code
+/notebooks/tests/
