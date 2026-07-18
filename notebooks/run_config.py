@@ -6,7 +6,7 @@ from pathlib import Path
 RUN_MODE = "full"
 
 # Gold datasets generated on every run.
-GOLD_TIME_UNITS = ("1h", "4h")
+GOLD_TIME_UNITS = ("1h", "2h", "4h")
 
 # Set App Token for Chicago Data (see notebook 00_01_data_loader.ipynb)
 APP_TOKEN = "***"
@@ -61,6 +61,9 @@ class DataPaths:
     gold_1h_demand_census_tracts: Path
     gold_1h_demand_community_areas: Path
     gold_1h_demand_hexagon: Path
+    gold_2h_demand_census_tracts: Path
+    gold_2h_demand_community_areas: Path
+    gold_2h_demand_hexagon: Path
     gold_4h_demand_census_tracts: Path
     gold_4h_demand_community_areas: Path
     gold_4h_demand_hexagon: Path
@@ -101,6 +104,11 @@ PATHS = DataPaths(
     gold_1h_demand_census_tracts=PROCESSED_DIR / "GOLD_1H_DEMAND_CENSUS_TRACTS.parquet",
     gold_1h_demand_community_areas=PROCESSED_DIR / "GOLD_1H_DEMAND_COMMUNITY_AREAS.parquet",
     gold_1h_demand_hexagon=PROCESSED_DIR / "GOLD_1H_DEMAND_HEXAGON.parquet",
+
+    gold_2h_demand_census_tracts=PROCESSED_DIR / "GOLD_2H_DEMAND_CENSUS_TRACTS.parquet",
+    gold_2h_demand_community_areas=PROCESSED_DIR / "GOLD_2H_DEMAND_COMMUNITY_AREAS.parquet",
+    gold_2h_demand_hexagon=PROCESSED_DIR / "GOLD_2H_DEMAND_HEXAGON.parquet",
+    
     gold_4h_demand_census_tracts=PROCESSED_DIR / "GOLD_4H_DEMAND_CENSUS_TRACTS.parquet",
     gold_4h_demand_community_areas=PROCESSED_DIR / "GOLD_4H_DEMAND_COMMUNITY_AREAS.parquet",
     gold_4h_demand_hexagon=PROCESSED_DIR / "GOLD_4H_DEMAND_HEXAGON.parquet",
