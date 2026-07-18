@@ -3,10 +3,10 @@ from dataclasses import dataclass
 
 # --------------------------------------------------
 # Set the run mode below to "sample" or "full"
-RUN_MODE = "sample" # "sample" or "full"
+RUN_MODE = "full" # "sample" or "full"
 
 # Set App Token for Chicago Data (see more details in Notebooks "00_01_data_loader.ipynb")
-APP_TOKEN = "***"
+APP_TOKEN = "kujE0csvYM9mpKDXjIfDzHGAg"
 # --------------------------------------------------
 # Start and end date of taxi and weather data
 START_DATE = "2024-01-01T00:00:00"
