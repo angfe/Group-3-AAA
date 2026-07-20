@@ -1,5 +1,30 @@
 # Data Analysis
 
+How did we handle the problem of sparse temporal spatial data:
+- we decided to keep them, as they reflect actual data and removing them would distort the data
+- weights
+- Loss-Function
+- selection_score
+
+Model, Architecture and Training
+v5 introduces embedding of community_area
+
+Grid Search for Hyperparameters:
+
+Relativly small search space (can be justified because we already trained some NNs):
+search_space = {
+    "dropout_rate": [0.0, 0.1, 0.2],
+    "weight_decay": [0.0, 1e-6, 1e-5, 1e-4],
+    "lr": [1e-3, 5e-4],
+    "loss_beta": [0.25, 0.5, 1.0],
+    "high_weight": [2.0, 3.0, 5.0, 8.0],
+}
+
+Advanced MAE Performance Measure:
+
+E. g.:
+selection_score = overall_mae + alpha * high_demand_mae
+
 More advanced NN model:
 
 2 NNs one for high, one for low demand:

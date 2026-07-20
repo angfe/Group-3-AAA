@@ -1,1 +1,25 @@
 # Data Preparation
+
+- Data sources: Taxi data, weather data, Census tracts, community areas, Point of interest data
+
+- Taxi data was downloaded from the Chicago Data Portal via API
+- Full run is from first january 2024 to first may 2026
+- Sample run contains just 5,000 rows from within this time period
+
+- Initally a data profiling was conducted to better understand the data, find null values and plausibility issues and coverage of the Data
+- This data profiling layed down the basis for the following data-prep steps
+
+- Data was prepared following a simple bronze-silver-gold pipeline logic, whereby each dataset runs through the levels:
+- Bronze represents the raw data stored as parquet file
+- Silver adjusted the data quality, missing values, inadequate data, consistency checks
+- Gold aggregates data, joins different data sets
+
+- Regarding gold / generating of the temporal-spatial dataset
+- First we created a dataframe containing the temporal unit, i. e. 1h, 2h or 4h. This dataframe contained nothing but the timestamps
+- We integrated the weather data to this dataframe and also holidays
+- Next we merged the temporal dataframe with the spatial units, i. e. census tracts, hexagons and community areas
+- This gave us the keys of the final dataset and we could aggregate the taxi data into this dataframe
+
+Thereby creating certain data charateristics that become problematic and need to be addressed during predictive tasks:
+- Most Temporal-Spatial units contain no or only very small demand (e. g. 3 am in some outer area of chicago) while only few contain high demand
+- Therefore we decided to use community area as main spatial unit 

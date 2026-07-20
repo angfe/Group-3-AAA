@@ -58,7 +58,7 @@ Thumbs.db
 # data
 data/**/*.parquet
 data/**/*.geoparquet
-data/**/*.csv
+data/**/taxi.csv
 models/**/*.pt
 
 # csv

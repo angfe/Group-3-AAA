@@ -1,21 +1,10 @@
 # TODO
 
-TODOs for the Triple A Project, feel free to add further TODOs.
-
-## 1. Data Cleaning and Preparation
-
-- [ ] Completing h3 hexa encoding
-- [ ] Adding Longitute Latitute values when other locational data is given
-- [ ] Find or create JSON File for Chicago
-- [ ] Add weather data
-
-## 2. Descriptive (Spatial) Analytics
-
-- [ ] How do we want to split this?
-
-# DONE
-
-- [x] Started data cleaning and preparing.
-- [x] Convert time data
-- [x] Check if trips ends after start
-- [x] Check if Trip Seconds makes sense for distance
+- [] Descriptive Analytics Notebook:
+  - Recommendation mit Jahren sollte zum tatsächlichen Vorgehen passen
+  - Community Area als Spatial Unit fehlt
+  - 0 demand analysis : how many and which time spatial units have 0 or <1 hours
+- [] Finale ToDos vor der Abgabe
+  - Notebooks alle durchlaufen lassen (im Sample Mode)
+  - Finaler Commit sollte Default in run_config auf sample mode und kein Token haben
+  - Report erstellung sollte durchlaufen
