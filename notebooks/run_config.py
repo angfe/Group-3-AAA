@@ -103,15 +103,15 @@ PATHS = DataPaths(
     gold_weatherdata=PROCESSED_DIR / "gold_weather.parquet",
     gold_1h_demand_census_tracts=PROCESSED_DIR / "GOLD_1H_DEMAND_CENSUS_TRACTS.parquet",
     gold_1h_demand_community_areas=PROCESSED_DIR / "GOLD_1H_DEMAND_COMMUNITY_AREAS.parquet",
-    gold_1h_demand_hexagon=PROCESSED_DIR / "GOLD_1H_DEMAND_HEXAGON.parquet",
+    gold_1h_demand_hexagon=PROCESSED_DIR / f"GOLD_1H_DEMAND_HEXAGON_{H3_RESOLUTION}.parquet",
 
     gold_2h_demand_census_tracts=PROCESSED_DIR / "GOLD_2H_DEMAND_CENSUS_TRACTS.parquet",
     gold_2h_demand_community_areas=PROCESSED_DIR / "GOLD_2H_DEMAND_COMMUNITY_AREAS.parquet",
-    gold_2h_demand_hexagon=PROCESSED_DIR / "GOLD_2H_DEMAND_HEXAGON.parquet",
+    gold_2h_demand_hexagon=PROCESSED_DIR / f"GOLD_2H_DEMAND_HEXAGON_{H3_RESOLUTION}.parquet",
     
     gold_4h_demand_census_tracts=PROCESSED_DIR / "GOLD_4H_DEMAND_CENSUS_TRACTS.parquet",
     gold_4h_demand_community_areas=PROCESSED_DIR / "GOLD_4H_DEMAND_COMMUNITY_AREAS.parquet",
-    gold_4h_demand_hexagon=PROCESSED_DIR / "GOLD_4H_DEMAND_HEXAGON.parquet",
+    gold_4h_demand_hexagon=PROCESSED_DIR / f"GOLD_4H_DEMAND_HEXAGON_{H3_RESOLUTION}.parquet",
 
     # Train/validation/test outputs
     train_test_dir=TRAIN_TEST_DIR,
