@@ -21,7 +21,7 @@ MODEL_START_DATE = "2025-01-01T00:00:00"
 MODEL_END_DATE = "2026-05-01T00:00:00"
 
 # Set H3_Resolution
-H3_RESOLUTION = 8
+H3_RESOLUTION = 7
 # --------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
