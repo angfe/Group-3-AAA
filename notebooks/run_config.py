@@ -15,6 +15,11 @@ APP_TOKEN = "***"
 START_DATE = "2024-01-01T00:00:00"
 END_DATE = "2026-05-01T00:00:00"
 
+# Predictive-model period used by the train/validation/test split in full mode.
+# The start is inclusive and the end is exclusive.
+MODEL_START_DATE = "2025-01-01T00:00:00"
+MODEL_END_DATE = "2026-05-01T00:00:00"
+
 # Set H3_Resolution
 H3_RESOLUTION = 8
 # --------------------------------------------------
