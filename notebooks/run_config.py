@@ -3,7 +3,7 @@ from pathlib import Path
 
 # --------------------------------------------------
 # Set the run mode below to "sample" or "full"
-RUN_MODE = "sample"
+RUN_MODE = "full"
 
 # Gold datasets generated on every run.
 GOLD_TIME_UNITS = ("1h", "2h", "4h")
