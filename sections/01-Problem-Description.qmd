@@ -1,7 +1,5 @@
 # Problem Description
 
-
-
 business goal and data mining goal
 
 position of	a top-tier management consultancy (Data Science Team of	Bane & Wayne Partners (BWP))
@@ -20,5 +18,4 @@ Taxis	are	considered	a
 good-enough	proxy	 for	potential	ride	hailing	vehicles.	
 
 Also,	provide	a	detailed	description	of	the trip	dataset such	 that	 there	are	no	
-pending	questions.	
-
+pending	questions.
