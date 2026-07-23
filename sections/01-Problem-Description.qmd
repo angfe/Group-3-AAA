@@ -1,5 +1,24 @@
 # Problem Description
-This report serves as a template for your team project. It is built using Quarto, which allows you to integrate your Python or R analysis directly into your writing.
 
-By using this template, you ensure that your formatting (margins, line spacing, and fonts) matches the required standards for submission. The left margin is set to 4cm to allow for comments, while the other margins are 2.5cm. Line spacing is set to 1.5, and the main font is Times New Roman.
+
+
+business goal and data mining goal
+
+position of	a top-tier management consultancy (Data Science Team of	Bane & Wayne Partners (BWP))
+
+Business Background:
+A	renowned	German	car	company	is	in	the	process	of	establishing	a	platform	for	
+ride-hailing	mobility	services.	Initially,	the	client	wants	to	offer	its	US	customers	(as	customers	from	the	US	
+market	are	more	receptive	for	novel	business	models)	a	ride-hailing	platform	using	a	fully	electrified	vehicle	
+fleet.	However,	the	customer	lacks	tactical	and	strategic	know-how	in	the	area	of	operations	management	
+of	electrical	vehicle	fleets.	Therefore,	our	client	asks	for	our	help	
+
+and	would	like	to	better	understand	the	
+dynamics	in	the	field	of	ride-hailing	for	a	US	city	in	temporal	and	spatial	resolution.
+
+Taxis	are	considered	a	
+good-enough	proxy	 for	potential	ride	hailing	vehicles.	
+
+Also,	provide	a	detailed	description	of	the trip	dataset such	 that	 there	are	no	
+pending	questions.	
 

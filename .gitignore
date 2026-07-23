@@ -59,6 +59,7 @@ Thumbs.db
 data/**/*.parquet
 data/**/*.geoparquet
 data/**/taxi.csv
+!data/sample/raw_data/taxi_sample.parquet
 models/**/*.pt
 
 # csv

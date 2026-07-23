@@ -1,10 +1,25 @@
 # Data Preparation
 
+Task:
+"""
+in	other	
+words,	your	method	should predict	for	each	spatial	unit	(in	whatever	spatial	layer	of	analysis	you	decide	
+on,	e.g.,	hexagon	or census	tract)	and	time-basket (e.g.,	08am-11.59am) the	taxi demand.	Important:	It	
+is	not	 your	goal	 to	predict	 hour	x+1	demand	given	 hour	x	demand,	 rather	 to	produce	an	answer	 to	
+questions	like	“what	demand	can	we	expect	on	a	rainy	Sunday	from	10	– 11	am	around	the	outskirts	of	
+the	city”.	Also advise a	reasonable	validation	strategy	for	your	prediction	model	(i.e.,	definition	of	test,	
+training	data	etc).
+"""
+
 - Data sources: Taxi data, weather data, Census tracts, community areas, Point of interest data
 
 - Taxi data was downloaded from the Chicago Data Portal via API
 - Full run is from first january 2024 to first may 2026
-- Sample run contains just 5,000 rows from within this time period
+- The sample run uses one reproducible, contiguous 14-day window
+  (`2026-04-13` through `2026-04-26`, inclusive). This preserves complete
+  weekdays, weekends, and daily demand cycles while keeping notebook runtimes
+  short. A 400,000-trip cap is only a safety guard; reaching it is treated as
+  an invalid, potentially truncated sample.
 
 - Initally a data profiling was conducted to better understand the data, find null values and plausibility issues and coverage of the Data
 - This data profiling layed down the basis for the following data-prep steps
@@ -35,3 +50,12 @@ Thereby creating certain data charateristics that become problematic and need to
 - Cross the temporal grids with every spatial unit, add POI counts by category, and aggregate taxi pickups as `trip_count`; explicitly retain spatial-temporal combinations with zero demand.
 - Produce comparable demand datasets for all temporal and spatial resolutions, with community areas used as the principal modeling unit because finer resolutions contain a particularly high proportion of sparse or zero-demand observations.
 - Create reproducible train, validation, and test datasets (approximately 70/15/15), grouping complete calendar days into the same split and checking that no dates leak across the partitions.
+
+
+
+- 4 Datasets in silver:
+    - Community area: complete data set as community area is always as spatial unit given
+    - Census tracts: is more granular than community area and not always given (number of missing values), therefore we remove data without census_tract here
+    - Hexagon: the hexagons are build on the census_tracts and therefore only reasonable when we have census_tract data
+    - community area filtered: to make a fair comparision between the spatial units we create a filtered dataset of community area
+    => Thereby we have one main dataset on community area and for a fair comparision of spatial units we have 3 filtered datasets 
