@@ -22,4 +22,16 @@
 
 Thereby creating certain data charateristics that become problematic and need to be addressed during predictive tasks:
 - Most Temporal-Spatial units contain no or only very small demand (e. g. 3 am in some outer area of chicago) while only few contain high demand
-- Therefore we decided to use community area as main spatial unit 
+- Therefore we decided to use community area as main spatial unit
+
+## Summary of the Central Data-Preparation Steps
+
+- Load the taxi, weather, spatial-boundary, and OpenStreetMap point-of-interest data and store the raw inputs as Parquet files in the bronze layer.
+- Profile the raw data for missing values, duplicates, temporal coverage, and implausible trip, fare, and location values; use these findings to define the subsequent cleaning rules.
+- Create the silver taxi dataset by removing duplicate or implausible trips, requiring valid pickup information, and retaining trips with positive fares and totals, non-negative cost components, distances of more than 0 and at most 250 miles, and durations between 1 minute and 3 hours.
+- Restrict the weather observations to the taxi-data period, repair the census-tract and community-area geometries, standardize their identifiers, and generate an H3 grid covering Chicago.
+- Build the gold layer by assigning taxi trips and POIs to H3 cells, census tracts, and community areas and by excluding pickup locations outside the Chicago grid.
+- Construct complete 1-, 2-, and 4-hour time grids and enrich them with aggregated and imputed weather data, Illinois holiday indicators, and cyclical month, weekday, and hour features.
+- Cross the temporal grids with every spatial unit, add POI counts by category, and aggregate taxi pickups as `trip_count`; explicitly retain spatial-temporal combinations with zero demand.
+- Produce comparable demand datasets for all temporal and spatial resolutions, with community areas used as the principal modeling unit because finer resolutions contain a particularly high proportion of sparse or zero-demand observations.
+- Create reproducible train, validation, and test datasets (approximately 70/15/15), grouping complete calendar days into the same split and checking that no dates leak across the partitions.
