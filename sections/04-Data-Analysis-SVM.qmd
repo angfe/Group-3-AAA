@@ -13,6 +13,8 @@
 - added memory
 - for linear use linear
 - change available hyperparamter through testing
+- changed to halving... instead of randomsearchcv due to better results
+- tested this out as the last option due to still being experimental
 
 - due to the data having a lot of y=0 the grid search complains about convergance issues -> this is another reason why svm for this particaluar data with h3 is not the best method
 - The time frames and spatial units, used above in the Neural Network() were used here as well.
