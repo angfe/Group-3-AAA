@@ -1,0 +1,88 @@
+# Appendix {.appendix}
+
+| Component | Input dimension | Output dimension | Activation |
+|---|---:|---:|---|
+| Numeric input | $n_{\text{features}}$ | $n_{\text{features}}$ | -- |
+| Hidden layer 1 | $n_{\text{features}}$ | 64 | ReLU |
+| Hidden layer 2 | 64 | 32 | ReLU |
+| Numeric output | 32 | 1 | Linear |
+| Spatial bias | Spatial-unit ID | 1 | -- |
+| Combination | Numeric score + spatial bias | 1 | Addition |
+| Final output | 1 | 1 | Softplus |
+
+: Architecture of the neural-network baseline {#tbl-nn-baseline-architecture}
+
+The spatial bias is implemented as a one-dimensional embedding. It represents an
+additive spatial intercept rather than a multidimensional representation-learning
+embedding. Index zero is reserved for spatial units not observed in the training
+split and has no learned effect.
+
+## Neural-network baseline training configuration {#sec-nn-baseline-training}
+
+| Setting | Configuration |
+|---|---|
+| Datasets | H3 resolution 7, census tracts, and filtered community areas |
+| Temporal units | 1h, 4h, and 24h |
+| Number of models | 9 |
+| Training objective | Mean squared error (MSE) |
+| Optimizer | Adam |
+| Learning rate | 0.001 |
+| Batch size | 1,024 |
+| Maximum epochs | 100 |
+| Early-stopping patience | 10 epochs |
+| Minimum improvement | 0 |
+| Checkpoint-selection metric | Validation MAE |
+| Output constraint | Softplus activation |
+| Numerical preprocessing | StandardScaler fitted exclusively on TRAIN |
+| Spatial preprocessing | Categorical mapping fitted exclusively on TRAIN |
+| Reproducibility | Dataset-specific seed, starting at 42 |
+| Model development split | TRAIN for fitting and VAL for model selection |
+| Final evaluation split | TEST remains unused during model development |
+
+: Training configuration of the neural-network baseline {#tbl-nn-baseline-training}
+
+## Neural-network baseline validation results {#sec-nn-baseline-results}
+
+```{python}
+#| label: tbl-nn-baseline-results
+#| tbl-cap: "Validation results of the neural-network baseline models"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+
+results_path = Path(
+    "models/full/baseline_NN_spatial_bias_v1_validation_results.parquet"
+)
+if not results_path.exists():
+    raise FileNotFoundError(
+        f"Missing baseline results: {results_path}. "
+        "Run the NN-baseline notebook in Full Mode before rendering the report."
+    )
+
+baseline_results = (
+    pd.read_parquet(
+        results_path,
+        columns=[
+            "model_tag",
+            "nn_val_mae",
+            "spatial_time_weekday_mean_val_mae",
+            "nn_val_mae_skill_score",
+        ],
+    )
+    .sort_values("nn_val_mae_skill_score", ascending=False)
+    .rename(
+        columns={
+            "model_tag": "Model",
+            "nn_val_mae": "NN MAE",
+            "spatial_time_weekday_mean_val_mae": "Naive baseline MAE",
+            "nn_val_mae_skill_score": "MAE skill score",
+        }
+    )
+    .round(4)
+)
+
+baseline_results
+```
