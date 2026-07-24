@@ -33,6 +33,8 @@ date: 2026-07-26 # Date of submission
 
 {{< include sections/04-Data-Analysis-SVM.qmd >}}
 
+{{< include sections/04-Data-Analysis-NN-SVM.qmd >}}
+
 {{< include sections/05-Reinforcement-Learning.qmd >}}
 
 {{< include sections/06-Conclusion.qmd >}}

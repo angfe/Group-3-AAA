@@ -1,5 +1,36 @@
-SVM
+## SVM 
 
 
+- changes we made during the developement of th svm in steps and why we decided on them
+- started with a basic svr on rbf kernel which is the basic kernel for scikits() implementation of svms
+- added grid search to find best hyperparameter
+- added scaler
+- changed grid search to only include the hyperparameter relevant for each kernel
+- added nystroem
+- changed gridsearchcv to randomsearchcv to make hyperparameter fitting quicker
+- changed gridsearch to include standardscaler in pipeline instead of manually
+- added transgressor
+- added memory
+- for linear use linear
+- change available hyperparamter through testing
+
+- due to the data having a lot of y=0 the grid search complains about convergance issues -> this is another reason why svm for this particaluar data with h3 is not the best method
+- The time frames and spatial units, used above in the Neural Network() were used here as well.
+- These include time frames of one, two and twentyfour hours. 
+- The used spatial units include 
+
+## SVR
+
+## Results
+
+
+## SVC
+
+## Results
+
+## How spatial resolution seems to change the outcome?
+
+
+## How temporal resoltion changed the outcome?
 
 
