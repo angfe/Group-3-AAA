@@ -1,4 +1,30 @@
-# Data Analysis
+# Data Analysis NN
+
+- Baseline prediction
+    - Zero prediction
+    - Avg Spatial x Time x Weekday
+    - Global median
+
+- Target and Features
+    - We selected "trip_count" as target for the demand, as this will tell us how many taxi trips were started in one spatial time unit
+    - Features: cyclic encoding of hour, weekday and month; weather data; holiday flag and POI information; all other taxi related columns were removed as it would otherwise lead to leakage
+
+- Preprocessing steps:
+    - Spatial Encoding is needed as the spatial units are otherwise interpreted as continiuos feature
+    - StandardScaler for the feature_cols fitted on training data only
+
+- First Baseline NN
+    - Model Architecture in @tbl-nn-baseline-architecture
+    -  First we trained a very simple NN on all filtered datasets
+    -  The model architecture is has two hidden layer, the first with 64 Neurons and the second with 32 Neurons.
+    -  As activation function we use ReLu and the output layer uses Softplus function to make all predictions >= 0
+    - Loss Function: MSE 
+    - Selection Criteria of best model: MAE
+    - with Adam as Optimizer and a learning rate of 0.001
+    - we uses seed 42 for reproduceability
+
+    - The validation results of all neural-network baseline models are presented in @tbl-nn-baseline-results.
+
 
 How did we handle the problem of sparse temporal spatial data:
 - we decided to keep them, as they reflect actual data and removing them would distort the data
