@@ -1,21 +1,17 @@
 # Problem Description
 
-business goal and data mining goal
+Customer: renowned	German	car	company
+Our role: top-tier management consultancy (Data Science Team of	Bane & Wayne Partners (BWP))
 
-position of	a top-tier management consultancy (Data Science Team of	Bane & Wayne Partners (BWP))
+- Our customer wants to understand the dynamics of the ride-hailing market in the US
+- But the customer lacks tactical an strategic know-how in the area of operations management of electrial vehicle fleets
+- Taxis are considered as a good-enough proxy for potential ride hailing vehicles
 
-Business Background:
-A	renowned	German	car	company	is	in	the	process	of	establishing	a	platform	for	
-ride-hailing	mobility	services.	Initially,	the	client	wants	to	offer	its	US	customers	(as	customers	from	the	US	
-market	are	more	receptive	for	novel	business	models)	a	ride-hailing	platform	using	a	fully	electrified	vehicle	
-fleet.	However,	the	customer	lacks	tactical	and	strategic	know-how	in	the	area	of	operations	management	
-of	electrical	vehicle	fleets.	Therefore,	our	client	asks	for	our	help	
-
-and	would	like	to	better	understand	the	
-dynamics	in	the	field	of	ride-hailing	for	a	US	city	in	temporal	and	spatial	resolution.
-
-Taxis	are	considered	a	
-good-enough	proxy	 for	potential	ride	hailing	vehicles.	
-
-Also,	provide	a	detailed	description	of	the trip	dataset such	 that	 there	are	no	
-pending	questions.
+Questions to answer:
+- What is the goal of our analysis / report?
+    - Data Mining Goal:
+    -   First: Describe the dynamics of the ride-hailing market in Chicago
+    -   Second: Develop a prediction model to forecast the demand
+    - Business Goal:
+    -   Third: Thereby argue whether these dynamics and forecast make a move to the US market for our customer promising
+- What are the main difficulties of doing so?
