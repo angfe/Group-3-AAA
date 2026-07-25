@@ -1,5 +1,13 @@
 # Data Analysis NN
 
+In the following section we describe the development and evaluation of prediction models to forecast the demand.
+
+First of all, we need to determine a simple prediction against which we can compare the more complex prediction models like SVM and NN. 
+We introduce three baseline predictions: zero prediction, global mean and the mean of spatial unit x time x weekday. 
+
+
+
+
 - Baseline prediction
     - Zero prediction
     - Avg Spatial x Time x Weekday
@@ -20,12 +28,18 @@
 
 In this section we describe the approach of developing and evaluating a neural network as prediction model. Our approach is divided into three sequential steps. 
 First we developed a simple and reproduceable baseline NN, second we performed a grid search based on the findings of the baseline NN 
-and lastly we trained a final model based on the grid search results.
+and lastly we trained a final model based on the grid search results. 
 
-The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision. Within this development phase
-our main goal was to determine whether NN can generally perform better compared to the baseline and which spatial-time-unit is most suited.
+- The baseline model allow us to make a first guess whether NN's are a suitable prediction
+    model for this use case and give us an intuition of what performance we can expect. With the grid search we can compare different models and select the best performing one.
+    The goal of the grid search is not to develop a final model but to make decisions about the architecture and training parameters. Therefore we need a final
+    training in the last step. 
+
+The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision between them. Within this development phase
+our main goal was to determine whether a NN can generally perform better compared to the baseline and which spatial-time-unit is most suited.
 The architecture of the baseline NN is kept simple with two hidden layers (64 and 32), ReLu activiation function and a spatial encoding for the 
-categorical spatial units. The numerical features were scaled using the StandardScaler, which was fitted only on the train set.
+categorical spatial units. A spatial encoding is necessary, because the spatial ID is a categorical value. The numerical features were scaled using the StandardScaler, which was fitted only on the train set. 
+After this scaling the features have a mean close to 0 and variance close to 1. This is helpful as distances between values of features are standardized. 
 In @tbl-nn-baseline-architecture and @tbl-nn-baseline-training we present the architecture and trainings configuration.
 The checkpoint-selection metric, which determines the best model troughout the epochs, is MAE on the validation set. We decided to use MAE, because it is 
 simple and very good interpretable. However, MAE is not suitable for comparisons between different spatial-time-units. Therefore, to compare different
@@ -66,7 +80,8 @@ the precision with 0.8123. The model struggles to predict real demand, but if it
 
 The fact that the recall is lower than the precision also leads us to propose improvements for a follow-up project. We recommend that prior to the regressions predicts a classifier model should predict the probability of low or high demand.
 Further we recommend exploring separate regression models for low and high demand. The final prediction could then be an ensemble of the classification, low and high demand prediction, e. g.
-final prediction = p_high * high_model_pred + (1-p_high) * low_model_pred.
+final prediction = p_high * high_model_pred + (1-p_high) * low_model_pred. A further lever may be to include lag-features like the demand in the last week or day. Then it would no longer be recommended to perform a random split of the train, validation
+and test data, but instead a chronological split should be used.
 
 
 Despite the grid search was conducted only on the census_tract_1h dataset, we decided
