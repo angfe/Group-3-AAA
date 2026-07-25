@@ -1,17 +1,15 @@
 # Problem Description
 
-Customer: renowned	German	car	company
-Our role: top-tier management consultancy (Data Science Team of	Bane & Wayne Partners (BWP))
+For operators of ride-hailing services tactical and strategical capabilities in operations mangement are a precondition 
+for market success. On the one hand the operator needs to understand the dynamics of the market to make guided strategical
+decisions, like in which cities and areas a ride-hailing business is likely profitable. On the other hand it is also crucial for
+the operator to be able to make daily tactical decision, for example to predict where and when demand will be high. 
 
-- Our customer wants to understand the dynamics of the ride-hailing market in the US
-- But the customer lacks tactical an strategic know-how in the area of operations management of electrial vehicle fleets
-- Taxis are considered as a good-enough proxy for potential ride hailing vehicles
+We have conducted an analysis of the taxi demand in Chicago, US to enable our customer to build the tactical and 
+strategical capabilities. These capabilities involve business and data understanding, whereby data understanding can be seen 
+as the foundation. Therefore the data mining goal is to describe the dynamics of the taxi market in Chicago and develop
+prediction models to forecast demand. Further we evaluate whether these models are sufficient to make demand forecasting for daily operations.
+The business goal is to argue whether a market entry in Chicago looks promising promising to our customer. Within this report we present the findings of our analysis.
 
-Questions to answer:
-- What is the goal of our analysis / report?
-    - Data Mining Goal:
-    -   First: Describe the dynamics of the ride-hailing market in Chicago
-    -   Second: Develop a prediction model to forecast the demand
-    - Business Goal:
-    -   Third: Thereby argue whether these dynamics and forecast make a move to the US market for our customer promising
-- What are the main difficulties of doing so?
+- Reinforcement Learning?
+- Some real number from the taxi market (but look at data description first)
