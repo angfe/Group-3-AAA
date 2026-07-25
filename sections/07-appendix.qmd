@@ -54,7 +54,8 @@ from pathlib import Path
 import pandas as pd
 
 results_path = Path(
-    "models/full/baseline_NN_spatial_bias_v1_validation_results.parquet"
+    "results/appendix/"
+    "baseline_NN_spatial_bias_v1_validation_results.parquet"
 )
 if not results_path.exists():
     raise FileNotFoundError(
@@ -125,8 +126,7 @@ import pandas as pd
 from IPython.display import Markdown, display
 
 baseline_metrics_path = Path(
-    "data/full/train_test_data/baseline_predictions/"
-    "baseline_test_metrics.parquet"
+    "results/appendix/baseline_test_metrics.parquet"
 )
 if not baseline_metrics_path.exists():
     raise FileNotFoundError(
@@ -201,11 +201,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 baseline_checkpoint_path = Path(
-    "models/full/"
+    "results/appendix/"
     "baseline_NN_spatial_bias_v1_census_tracts_1h_best_model.pt"
 )
 baseline_validation_path = Path(
-    "data/full/train_test_data/"
+    "results/appendix/"
     "GOLD_1H_DEMAND_CENSUS_TRACTS_VAL.parquet"
 )
 for required_path in (baseline_checkpoint_path, baseline_validation_path):
@@ -437,7 +437,7 @@ import matplotlib.pyplot as plt
 import polars as pl
 
 baseline_history_path = Path(
-    "models/full/"
+    "results/appendix/"
     "baseline_NN_spatial_bias_v1_"
     "census_tracts_1h_training_history.parquet"
 )
@@ -517,7 +517,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import polars as pl
 
-baseline_history_directory = Path("models/full")
+baseline_history_directory = Path("results/appendix")
 spatial_history_rows = [
     ("H3 resolution 7", "hexagon_h3r7"),
     ("Census tracts", "census_tracts"),
@@ -609,7 +609,7 @@ import pandas as pd
 from IPython.display import Markdown, display
 
 final_test_results_path = Path(
-    "models/full/nn_final/final_nn_v1_test_results.parquet"
+    "results/appendix/final_nn_v1_test_results.parquet"
 )
 if not final_test_results_path.exists():
     raise FileNotFoundError(
@@ -698,7 +698,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 final_census_history_path = Path(
-    "models/full/nn_final/"
+    "results/appendix/"
     "final_nn_v1_census_tracts_1h_training_history.parquet"
 )
 if not final_census_history_path.exists():
@@ -775,8 +775,8 @@ from matplotlib.colors import PowerNorm
 import polars as pl
 from shapely.geometry import Polygon
 
-final_model_directory = Path("models/full/nn_final")
-processed_data_directory = Path("data/full/processed_data")
+final_model_directory = Path("results/appendix")
+processed_data_directory = Path("results/appendix")
 prediction_paths = {
     "census_tract": (
         final_model_directory
@@ -958,7 +958,7 @@ import numpy as np
 import pandas as pd
 
 final_test_results_path = Path(
-    "models/full/nn_final/final_nn_v1_test_results.parquet"
+    "results/appendix/final_nn_v1_test_results.parquet"
 )
 if not final_test_results_path.exists():
     raise FileNotFoundError(
@@ -1130,7 +1130,7 @@ import pandas as pd
 from IPython.display import Markdown, display
 
 stage_one_path = Path(
-    "models/full/nn_grid_search/grid_search_v1_stage_1_validation_results.parquet"
+    "results/appendix/grid_search_v1_stage_1_validation_results.parquet"
 )
 if not stage_one_path.exists():
     raise FileNotFoundError(
@@ -1207,7 +1207,7 @@ import pandas as pd
 from IPython.display import Markdown, display
 
 stage_two_path = Path(
-    "models/full/nn_grid_search/grid_search_v1_stage_2_validation_results.parquet"
+    "results/appendix/grid_search_v1_stage_2_validation_results.parquet"
 )
 if not stage_two_path.exists():
     raise FileNotFoundError(
@@ -1265,7 +1265,7 @@ performance_columns = [
 ]
 stage_one_performance = pd.read_parquet(
     Path(
-        "models/full/nn_grid_search/"
+        "results/appendix/"
         "grid_search_v1_stage_1_validation_results.parquet"
     ),
     columns=performance_columns,
@@ -1277,7 +1277,7 @@ stage_one_performance.insert(0, "Stage", 1)
 
 stage_two_performance = pd.read_parquet(
     Path(
-        "models/full/nn_grid_search/"
+        "results/appendix/"
         "grid_search_v1_stage_2_validation_results.parquet"
     ),
     columns=performance_columns,
@@ -1321,7 +1321,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 winner_history_path = Path(
-    "models/full/nn_grid_search/"
+    "results/appendix/"
     "grid_search_v1_census_tracts_1h_"
     "s2_weighted_pw5_h128-64_lr0p001_training_history.parquet"
 )
