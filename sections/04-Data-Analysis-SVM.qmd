@@ -1,12 +1,11 @@
-# SVM 
+# SVM
 
-To understand demand in different areas of the city, we used a neural network and SVM.
-To be able to compare the two models, we focused on SVM with regression.
-The target here, as above, is the trip demand specifically the trip count.
+In order to understand demand in different areas of the city better, we used two prediction models: neural network and SVM.
+Specifically, in this section we will be focusing on SVM with regression, in other words SVR.
+The objective of the model is to predict the trip demand particularly the trip count as accurately as possible.
 
-
-
-
+Our SVR model is trained and tested on the data as described here (insert link).
+----
 
 set non negatives to 0 since there cant be negative demand
 

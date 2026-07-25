@@ -3,10 +3,10 @@
 In the following section we describe the development and evaluation of prediction models to forecast the demand.
 
 First of all, we need to determine a simple prediction against which we can compare the more complex prediction models like SVM and NN. 
-We introduce three baseline predictions: zero prediction, global mean and the mean of spatial unit x time x weekday. 
-
-
-
+We introduce three baseline predictions: zero prediction, global mean and the mean of spatial unit x time x weekday. The last baseline
+is the most challenging one, as it already contains spatial and time related information of the demand. These baseline predictions can be used to calculate 
+performance metrics like the MAE (mean average error), which indicates the mean absolute deviation from the true observed value and the predicted value.
+The MAE performance of these baseline is shown in @tbl-trivial-baseline-test-mae.
 
 - Baseline prediction
     - Zero prediction

@@ -472,10 +472,18 @@ def analyze_training_history(
         "best_value": best_value,
     }
     
-def load_validation_baseline_metrics(baseline_prediction_dir, baseline_prediction_cols, model_tag):
-    # The trivial-baseline notebook fits on train and persists predictions for val
+def load_validation_baseline_metrics(
+    baseline_prediction_dir,
+    baseline_prediction_cols,
+    model_tag,
+    split,
+):
+    if split not in {"val", "test"}:
+        raise ValueError("split must be either 'val' or 'test'")
+
+    # The trivial-baseline notebook fits on train and persists predictions per split.
     prediction_path = (
-        baseline_prediction_dir / f"{model_tag}_val_baselines.parquet"
+        baseline_prediction_dir / f"{model_tag}_{split}_baselines.parquet"
     )
    
     predictions = pl.read_parquet(prediction_path)
