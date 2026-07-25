@@ -1,5 +1,3 @@
-"""Wiederverwendbare Hilfsfunktionen fuer PyTorch-Regressionsmodelle."""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -15,11 +13,13 @@ from torch.utils.data import DataLoader
 
 
 def get_torch_device() -> torch.device:
-    """Waehlt MPS, CUDA oder CPU in dieser Reihenfolge aus."""
+    
     if torch.backends.mps.is_available():
         return torch.device("mps")
+    
     if torch.cuda.is_available():
         return torch.device("cuda")
+    
     return torch.device("cpu")
 
 
@@ -30,17 +30,7 @@ def load_model_from_checkpoint(
     device: torch.device | str | None = None,
     model_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[nn.Module, dict[str, Any]]:
-    """Laedt einen Checkpoint und rekonstruiert das zugehoerige Modell.
-
-    Falls ``model_kwargs`` nicht angegeben wird, erkennt die Funktion zwei
-    Checkpoint-Formate automatisch:
-
-    - Embedding-Modell: ``numeric_input_dim``, ``num_communities`` und
-      ``embedding_dim``
-    - Legacy-Modell ohne Embedding: ``input_dim``
-
-    ``model_class`` muss jeweils zu der gespeicherten Architektur passen.
-    """
+    
     device = torch.device(device) if device is not None else get_torch_device()
     checkpoint_path = Path(checkpoint_path)
 
@@ -95,13 +85,7 @@ def collect_predictions(
     inverse_target: Callable[[np.ndarray], np.ndarray] = np.expm1,
     clip_negative_predictions: bool = True,
 ) -> pl.DataFrame:
-    """Erzeugt Predictions und eine Tabelle mit Regressionsfehlern.
-
-    Bei ``embedding_input=True`` muss ein Batch als
-    ``(X, community_idx, y, ...)`` aufgebaut sein. Andernfalls wird
-    ``(X, y, ...)`` erwartet. Zusaetzliche Batch-Elemente, beispielsweise
-    Sample-Gewichte, werden ignoriert.
-    """
+   
     device = torch.device(device) if device is not None else get_torch_device()
     model.to(device)
     model.eval()
@@ -152,7 +136,7 @@ def compute_regression_metrics(
     zero_threshold: float = 0.0,
     peak_quantile: float = 0.90,
 ) -> pl.DataFrame:
-    """Berechnet globale sowie Zero-, Non-Zero- und Peak-Metriken."""
+
     required_columns = {"y_true", "y_pred"}
     missing = required_columns.difference(evaluation.columns)
     if missing:
@@ -220,7 +204,7 @@ def plot_regression_diagnostics(
     n_bins: int = 50,
     random_seed: int = 42,
 ) -> tuple[plt.Figure, pl.DataFrame]:
-    """Erstellt vier Diagnoseplots und gibt zusaetzlich Bucket-Metriken zurueck."""
+    
     required_columns = {"y_true", "y_pred", "residual", "abs_error"}
     missing = required_columns.difference(evaluation.columns)
     if missing:
@@ -307,16 +291,7 @@ def plot_learning_curves(
     best_epoch: int | None = None,
     title: str = "Learning curves",
 ) -> plt.Figure:
-    """Visualisiert Lernkurven eines trainierten Modells.
 
-    Erwartete Spalten sind ``epoch`` und mindestens eine der folgenden:
-    ``train_loss``, ``val_loss``, ``val_log_loss``, ``val_mae``,
-    ``val_rmse``, ``high_demand_mae`` oder ``selection_score``.
-
-    ``history`` kann eine Polars-Tabelle, ein Dictionary aus Listen oder eine
-    Liste von Dictionaries sein. Falls ``best_epoch`` nicht gesetzt ist und
-    ein ``selection_score`` existiert, wird dessen Minimum markiert.
-    """
     if isinstance(history, pl.DataFrame):
         frame = history
     elif isinstance(history, Mapping):
@@ -382,6 +357,7 @@ def plot_learning_curves(
 
     figure.suptitle(title)
     figure.tight_layout()
+    
     return figure
 
 
@@ -393,44 +369,7 @@ def analyze_training_history(
     show: bool = True,
     print_summary: bool = True,
 ) -> dict[str, Any]:
-    """Laedt und analysiert eine als Parquet gespeicherte Trainingshistorie.
 
-    Die Funktion bestimmt die beste Epoche, erstellt eine kompakte Summary und
-    visualisiert die vorhandenen Loss- und Validierungsmetriken mit
-    :func:`plot_learning_curves`.
-
-    Falls ``best_metric`` nicht angegeben wird, wird die erste vorhandene
-    Metrik aus dieser Reihenfolge verwendet: ``selection_score``, ``val_mae``,
-    ``val_loss``, ``val_log_loss``, ``val_rmse`` und ``train_loss``. Für diese
-    Metriken gilt jeweils: kleiner ist besser.
-
-    Parameters
-    ----------
-    history_path:
-        Pfad zur Parquet-Datei der Trainingshistorie.
-    best_metric:
-        Optionale Spalte, anhand derer die beste Epoche bestimmt wird.
-    title:
-        Optionale Überschrift der Lernkurven. Standardmäßig wird der Dateiname
-        verwendet.
-    show:
-        Zeigt die Abbildung direkt mit ``plt.show()`` an.
-    print_summary:
-        Gibt Pfad, Auswahlmetrik und Summary-Tabelle aus.
-
-    Returns
-    -------
-    dict
-        Enthält ``history_df``, ``summary_df``, ``figure``, ``best_epoch``,
-        ``best_metric`` und ``best_value``.
-
-    Examples
-    --------
-    >>> analysis = analyze_training_history(
-    ...     MODEL_PATH / "advanced_v7_community_areas_4h_training_history.parquet"
-    ... )
-    >>> analysis["summary_df"]
-    """
     history_path = Path(history_path)
     if not history_path.exists():
         raise FileNotFoundError(f"Trainingshistorie nicht gefunden: {history_path}")
@@ -532,3 +471,19 @@ def analyze_training_history(
         "best_metric": best_metric,
         "best_value": best_value,
     }
+    
+def load_validation_baseline_metrics(baseline_prediction_dir, baseline_prediction_cols, model_tag):
+    # The trivial-baseline notebook fits on train and persists predictions for val
+    prediction_path = (
+        baseline_prediction_dir / f"{model_tag}_val_baselines.parquet"
+    )
+   
+    predictions = pl.read_parquet(prediction_path)
+
+    metrics = {}
+    for baseline_name, prediction_col in baseline_prediction_cols.items():
+        table = compute_regression_metrics(
+            predictions.select("y_true", pl.col(prediction_col).alias("y_pred"))
+        )
+        metrics[baseline_name] = dict(zip(table["metric"].to_list(), table["value"].to_list()))
+    return metrics
