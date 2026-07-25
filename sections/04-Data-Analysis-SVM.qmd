@@ -1,6 +1,29 @@
-## SVM 
+# SVM 
+
+To understand demand in different areas of the city, we used a neural network and SVM.
+To be able to compare the two models, we focused on SVM with regression.
+The target here, as above, is the trip demand specifically the trip count.
 
 
+
+
+
+set non negatives to 0 since there cant be negative demand
+
+For SVM we used the same data as described above. With time units consisting of one hour, four hour and twentyfour hour.
+The spatial units used include hexagons\ref{}
+The target was defined as "trip_count". The amount of started trips during 
+The features are Features: cyclic encoding of hour, weekday and month; weather data; holiday flag and POI information; all other taxi related columns were removed as it would otherwise lead to leakage
+and the spatial unit encoded as latitude longitude with x, y, z due to show the dependencies of latitude and longitude.
+This was chosen since most other encoding did not work for all three spatial units. 
+Especially OneHot encoding only worked for community areas.
+We started with a simple kernel without anything. At first we added 
+
+To compare the results with the Neural Network we decided to focus on regression instead of classification.
+The biggest problem we run into during the developement is the runtime of the gridsearch and the fitting.
+These exceeded multiple hours depending on the spatial unit and time frame.
+
+The changes we made included:
 - changes we made during the developement of th svm in steps and why we decided on them
 - started with a basic svr on rbf kernel which is the basic kernel for scikits() implementation of svms
 - added grid search to find best hyperparameter
@@ -15,7 +38,8 @@
 - change available hyperparamter through testing
 - changed to halving... instead of randomsearchcv due to better results
 - tested this out as the last option due to still being experimental
-- 
+
+The last version consisted of a pipeline which is: TransformedTargetRegressor, standardscaler, Nystroem and 
 
 - due to the data having a lot of y=0 the grid search complains about convergance issues -> this is another reason why svm for this particaluar data with h3 is not the best method
 - The time frames and spatial units, used above in the Neural Network() were used here as well.
@@ -24,16 +48,33 @@
 
 ## SVR
 
+
+
 ## Results
 
 
+
+Overall the spatial units which have bigger units outside the center of the city where most people take taxis seem to perform better.
+This might be due to the fact that the grid searcha as well as the fitting does not 
+
 ## SVC
+The classification was developed at the side and run on the best SVRs.
 
 ## Results
 
 ## How spatial resolution seems to change the outcome?
 
+Generally 
 
 ## How temporal resoltion changed the outcome?
 
+Mid temporal resoltion seems to be the best so 4h or sometimes 1 seems to overall be the best performing
+
+
+## Further Improvement
+
+The first improvement we would recommend it to use data, that does not consist of a lot of trip count zero.
+This lead to bad convergance during the grid search as well as the model fitting.
+The next time we would also recommend to directly develop the model to run on GPU due to the significant amount of data.
+But overall we would not recommend to use SVMs for this kind of data especially for classification there are models which can handle more similar data better.
 
