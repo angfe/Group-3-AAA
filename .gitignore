@@ -71,5 +71,8 @@ csv/
 # test code
 /notebooks/tests/
 
+
+
+t/
 # svm model
 #/models/svm/
