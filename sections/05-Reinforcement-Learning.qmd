@@ -2,9 +2,7 @@
 
 ## Motivation and Setup
 The daily operation of electric vehicles requires them to recharge daily. Depending on the time of day, charging costs can vary significantly, especially between peak and off-peak hours. Therefore, charging cost is a significant operational expense for an electric fleet.
-
 A naive strategy of always charging at maximum power ensures the battery is full, but comes at an unnecessarily high cost since the cost grows exponentially with power. However, if we assume the vehicle is home for a fixed window, for example between 2pm and 4pm, we can be smart about when and how much to charge. With reinforcement learning we can simulate this smart charging behaviour, where an agent learns to balance cost savings against the risk of running out of energy.
-
 We model this as a Markov Decision Process (MDP), where the agent observes the current time and battery level, picks a charging power level, and receives feedback in the form of a cost signal.
 
 Our MDP is defined as follows:
@@ -14,34 +12,31 @@ Our MDP is defined as follows:
 - Transition: the battery increases by the chosen power × 0.25h, capped at battery capacity.
 - Reward: negative charging cost each step. At the final step (4pm), a random energy demand is drawn from a normal distribution (μ = 30 kWh, σ = 5 kWh). If the battery cannot cover this demand, a large penalty is applied.
 
-We made the following assumptions, grounded in real-world data:
-
-- Battery capacity: 60 kWh; Tesla Model Y is one of the most used EV taxi models in North America, and 60 kWh represents a typical usable battery capacity for current EVs.
-- Charging levels: 0, 7, 14, 22 kW; Level 2 home chargers support up to 22 kW, which is sufficient for the Tesla Model Y.
-- Starting battery at 2pm: random between 5 and 20 kWh; the vehicle arrives partially depleted after a morning shift.
-- Cost coefficients: 0.052–0.076; calibrated to match real Chicago home charging rates of $0.11–$0.16 per kWh, with the coefficient increasing linearly across timesteps to reflect time-of-use pricing.
+To ensure realistic simulation parameters, we grounded our assumptions in real-world data. The Tesla Model Y is one of the most commonly used models for EV taxis in North America [@kaiyiglobal2026], and according to current EV specifications, a usable battery capacity of 60 kWh is representative of this vehicle class [@evdatabase2026]. For the available charging levels, we considered Level 2 home chargers, which support power rates of up to 22 kW, sufficient for the Tesla Model Y [@podenergy2026]. Furthermore, we discretized the charging options into four levels: 0 kW (off), 7 kW (low), 14 kW (medium), and 22 kW (high). The starting battery at 2pm is sampled randomly between 5 and 20 kWh, reflecting a vehicle that arrives partially depleted after a morning shift.
+For the charging cost, we assumed home charging in Chicago, where residential electricity rates range from $0.11 to $0.16 per kWh [@beecharge2026]. We calibrated the cost coefficients to match these rates: at medium power (14 kW, delivering 3.5 kWh per 15-minute step), the coefficient ranges from 0.052 at the cheaper end to 0.076 at the more expensive end. The coefficient increases linearly across the eight timesteps, reflecting time-of-use pricing where electricity becomes more expensive during late afternoon hours.
 
 We solve this using Q-Learning, a standard reinforcement learning method that learns optimal decisions through trial and error. Q-Learning is well suited here because the state space is small and discrete, allowing the agent to learn a complete policy without the overhead of a neural network.
-
 We additionally implemented a Deep Q-Network (DQN) to test whether a neural network-based approach could match or improve on the tabular solution. While Q-Learning works well for our small state space, DQN would scale better to more complex scenarios, for example if the charging window were longer or if real-time electricity prices were included as an additional state variable.
 
 ## Results
-We evaluated the learned policies over 20000 simulated episodes against a naive baseline that always charges at maximum power (22kW). The results are summarized below:
-Policy                      Avg Cost    Savings  Avg Battery  Fail Rate
-----------------------------------------------------------------------
-Baseline (always max)          10.14       0.0%        55.9       0.0%
-Q-Learning                      6.38      37.1%        47.1       0.0%
-DQN                             8.24      18.8%        50.2       0.0%
+We trained both agents for 20,000 episodes and evaluated the learned policies over 2,000 simulated episodes against a naive baseline that always charges at maximum power (22kW). The results are summarized below:
 
-The Q-Learning agent achieves a 37.1% cost reduction compared to the baseline while maintaining a 0% out-of-energy rate. It does this by charging more aggressively during the early, cheaer timesteps and reducing or skipping charging later when cost coefficients are higher. The average battery departure (47.1 kWh) comfortably exceeds the mean demand of 30 kWh, provideing a safety margin against demand uncertainty without overcharging.
+| Policy | Avg. Cost | Savings | Avg. Battery at 4pm | Out-of-Energy Rate |
+|--------|-----------|---------|---------------------|--------------------|
+| Baseline (always max) | 10.14 | — | 55.9 kWh | 0.0% |
+| Q-Learning | 6.38 | 37.1% | 47.1 kWh | 0.0% |
+| DQN | 8.24 | 18.8% | 50.2 kWh | 0.0% |
+
+: Evaluation results over 20000 episodes. {#tbl-rl-results}
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-comparison >}}
+
+The Q-Learning agent achieves a 37.1% cost reduction compared to the baseline while maintaining a 0% out-of-energy rate. It does this by charging more aggressively during the early, cheaper timesteps and reducing or skipping charging later when cost coefficients are higher. The average battery departure (47.1 kWh) comfortably exceeds the mean demand of 30 kWh, provideing a safety margin against demand uncertainty without overcharging.
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-q-schedule >}}
 
 The DQN agent also outperforms the baseline with an 18.8% cost reduction, though it charges more conservatetively than Q-Learning, resulting in a higher average battery at departures (50.2kWh). This is expected since the tabular Q-Learning approach can respresent th optimal policy exactly for our small, discrete state space. Meanwhile the DQN introduces approximation, however, its advantage lies in its scalability, as it could handle a more complex scenario with continous state variables or a longer charging window without modification.
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-dqn-schedule >}}
 
 All three policies achive a 0% out of energy rate, confirming that the penalty mechanism successfully teaches the agents to prioritize energy sufficiency. This is substantial, since this could leave the driver stranded and lose a full day of revenue. 
 
-## Implications
-The results demonstrate that even in a simplified two-hour charging window, an intelligent charging agent can reduce costs by over a third compared to a naive strategy. Scaled to an entire fleet, these savings become significant. For example, if a fleet of 100 vehicles each charges once per day, a 37% reduction in per-vehicle charging cost translates directly into lower daily operating expenses.
-
-The smart charging system is fully automated and requires no manual intervention from dirvers or dispatchers. Once trained, the agent makes real-time charging decisions based ont he current battery level and time of day, adapting naturally to varying starting conditions.
-
+The results demonstrate that even in a simplified two-hour charging window, an intelligent charging agent can reduce costs by over a third compared to a naive strategy. Scaled to an entire fleet, these savings become significant. For example, if a fleet of 100 vehicles each charges once per day, a 37% reduction in per-vehicle charging cost translates directly into lower daily operating expenses. The smart charging system is fully automated and requires no manual intervention from dirvers or dispatchers. Once trained, the agent makes real-time charging decisions based on the current battery level and time of day, adapting naturally to varying starting conditions. 
 Moreover, the approach is flexible. If the electricity pricing structures change or the charging window shifts or the parameters are changed, the agent can simply be retrained ont he updated parameters. This makes it a future-proof component of the fleet's operational toolkit, complementing the demand prediction models developed in earlier sections of this analysis.
