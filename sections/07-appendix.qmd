@@ -68,21 +68,1312 @@ baseline_results = (
         columns=[
             "model_tag",
             "nn_val_mae",
+            "zero_val_mae",
+            "global_median_val_mae",
             "spatial_time_weekday_mean_val_mae",
             "nn_val_mae_skill_score",
         ],
+    )
+    .assign(
+        skill_vs_zero=lambda frame: (
+            1 - frame["nn_val_mae"] / frame["zero_val_mae"]
+        ),
+        skill_vs_global_median=lambda frame: (
+            1
+            - frame["nn_val_mae"]
+            / frame["global_median_val_mae"]
+        ),
     )
     .sort_values("nn_val_mae_skill_score", ascending=False)
     .rename(
         columns={
             "model_tag": "Model",
             "nn_val_mae": "NN MAE",
-            "spatial_time_weekday_mean_val_mae": "Naive baseline MAE",
-            "nn_val_mae_skill_score": "MAE skill score",
+            "spatial_time_weekday_mean_val_mae": "S×T×W MAE",
+            "skill_vs_zero": "Skill: zero",
+            "skill_vs_global_median": "Skill: median",
+            "nn_val_mae_skill_score": "Skill: S×T×W",
         }
     )
+    [
+        [
+            "Model",
+            "NN MAE",
+            "S×T×W MAE",
+            "Skill: zero",
+            "Skill: median",
+            "Skill: S×T×W",
+        ]
+    ]
     .round(4)
 )
 
 baseline_results
+```
+
+## Trivial baseline test performance {#sec-trivial-baseline-performance}
+
+```{python}
+#| label: tbl-trivial-baseline-test-mae
+#| tbl-cap: "Test MAE of the three trivial baselines for the filtered datasets"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import Markdown, display
+
+baseline_metrics_path = Path(
+    "data/full/train_test_data/baseline_predictions/"
+    "baseline_test_metrics.parquet"
+)
+if not baseline_metrics_path.exists():
+    raise FileNotFoundError(
+        f"Missing baseline metrics: {baseline_metrics_path}. "
+        "Run the trivial-baseline notebook before rendering the report."
+    )
+
+filtered_dataset_order = [
+    "hexagon_h3r7_1h",
+    "census_tracts_1h",
+    "community_areas_1h",
+    "hexagon_h3r7_4h",
+    "census_tracts_4h",
+    "community_areas_4h",
+    "hexagon_h3r7_24h",
+    "census_tracts_24h",
+    "community_areas_24h",
+]
+trivial_baseline_mae = (
+    pd.read_parquet(baseline_metrics_path)
+    .loc[
+        lambda frame: (
+            frame["metric"].eq("mae")
+            & ~frame["dataset"].str.contains("unfiltered")
+        )
+    ]
+    .pivot(index="dataset", columns="baseline", values="value")
+    .reindex(filtered_dataset_order)
+    .reset_index()
+    .rename(
+        columns={
+            "dataset": "Dataset",
+            "zero": "Zero MAE",
+            "global_median": "Global median MAE",
+            "spatial_time_weekday_mean": "Spatial-time-weekday MAE",
+        }
+    )
+    .round(4)
+)
+trivial_baseline_mae = trivial_baseline_mae[
+    [
+        "Dataset",
+        "Zero MAE",
+        "Global median MAE",
+        "Spatial-time-weekday MAE",
+    ]
+]
+
+header = "| " + " | ".join(trivial_baseline_mae.columns) + " |"
+separator = "| " + " | ".join(
+    "---" for _ in trivial_baseline_mae.columns
+) + " |"
+rows = [
+    "| " + " | ".join(str(value) for value in row) + " |"
+    for row in trivial_baseline_mae.itertuples(index=False, name=None)
+]
+display(Markdown("\n".join([header, separator, *rows])))
+```
+
+## Neural-network baseline diagnostics {#sec-nn-baseline-diagnostics}
+
+```{python}
+#| label: setup-nn-baseline-diagnostics
+#| include: false
+
+from pathlib import Path
+
+import numpy as np
+import polars as pl
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+baseline_checkpoint_path = Path(
+    "models/full/"
+    "baseline_NN_spatial_bias_v1_census_tracts_1h_best_model.pt"
+)
+baseline_validation_path = Path(
+    "data/full/train_test_data/"
+    "GOLD_1H_DEMAND_CENSUS_TRACTS_VAL.parquet"
+)
+for required_path in (baseline_checkpoint_path, baseline_validation_path):
+    if not required_path.exists():
+        raise FileNotFoundError(f"Missing baseline diagnostic input: {required_path}")
+
+baseline_checkpoint = torch.load(
+    baseline_checkpoint_path,
+    map_location="cpu",
+    weights_only=False,
+)
+
+
+class AppendixBaselineNN(nn.Module):
+    def __init__(self, input_dim, num_spatial_units):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+        )
+        self.spatial_bias = nn.Embedding(
+            num_embeddings=num_spatial_units + 1,
+            embedding_dim=1,
+            padding_idx=0,
+        )
+        self.output_activation = nn.Softplus()
+
+    def forward(self, x, spatial_idx):
+        return self.output_activation(
+            self.network(x) + self.spatial_bias(spatial_idx)
+        )
+
+
+baseline_model = AppendixBaselineNN(
+    **baseline_checkpoint["model_kwargs"]
+)
+baseline_model.load_state_dict(baseline_checkpoint["model_state_dict"])
+baseline_model.eval()
+
+baseline_val_df = pl.read_parquet(
+    baseline_validation_path,
+    columns=[
+        *baseline_checkpoint["feature_cols"],
+        baseline_checkpoint["spatial_col"],
+        "trip_count",
+    ],
+)
+baseline_features = baseline_val_df.select(
+    baseline_checkpoint["feature_cols"]
+).to_numpy()
+baseline_features = (
+    (
+        baseline_features
+        - np.asarray(baseline_checkpoint["scaler_mean"])
+    )
+    / np.asarray(baseline_checkpoint["scaler_scale"])
+).astype("float32")
+baseline_spatial_indices = (
+    baseline_val_df
+    .select(
+        pl.col(baseline_checkpoint["spatial_col"])
+        .cast(pl.String)
+        .replace_strict(
+            baseline_checkpoint["spatial_to_idx"],
+            default=0,
+        )
+        .cast(pl.Int64)
+    )
+    .to_series()
+    .to_numpy()
+)
+baseline_y_true = baseline_val_df["trip_count"].to_numpy().astype("float32")
+
+baseline_loader = DataLoader(
+    TensorDataset(
+        torch.tensor(baseline_features),
+        torch.tensor(baseline_spatial_indices, dtype=torch.long),
+    ),
+    batch_size=baseline_checkpoint["batch_size"],
+    shuffle=False,
+)
+baseline_prediction_parts = []
+with torch.inference_mode():
+    for feature_batch, spatial_batch in baseline_loader:
+        baseline_prediction_parts.append(
+            baseline_model(feature_batch, spatial_batch)
+            .numpy()
+            .reshape(-1)
+        )
+baseline_y_pred = np.concatenate(baseline_prediction_parts)
+if baseline_y_pred.size != baseline_y_true.size:
+    raise ValueError("Baseline prediction and validation target counts differ")
+
+baseline_abs_error = np.abs(baseline_y_true - baseline_y_pred)
+baseline_bucket_labels = np.select(
+    [
+        baseline_y_true == 0,
+        baseline_y_true <= 1,
+        baseline_y_true <= 3,
+        baseline_y_true <= 5,
+        baseline_y_true <= 10,
+        baseline_y_true <= 20,
+    ],
+    ["0", "1", "2-3", "4-5", "6-10", "11-20"],
+    default=">20",
+)
+baseline_bucket_order = ["0", "1", "2-3", "4-5", "6-10", "11-20", ">20"]
+baseline_bucket_metrics = (
+    pl.DataFrame(
+        {
+            "demand_bucket": baseline_bucket_labels,
+            "y_true": baseline_y_true,
+            "abs_error": baseline_abs_error,
+        }
+    )
+    .group_by("demand_bucket")
+    .agg(
+        pl.col("abs_error").mean().alias("mae"),
+        pl.col("y_true").mean().alias("avg_y_true"),
+    )
+    .with_columns(
+        pl.col("demand_bucket")
+        .replace(
+            {
+                label: index
+                for index, label in enumerate(baseline_bucket_order)
+            }
+        )
+        .cast(pl.Int64)
+        .alias("bucket_order")
+    )
+    .sort("bucket_order")
+)
+```
+
+```{python}
+#| label: fig-nn-baseline-diagnostics
+#| fig-cap: "Validation diagnostics of the census-tract 1h neural-network baseline: actual versus predicted demand (left), and MAE and average actual demand by demand bucket (right)"
+#| echo: false
+#| warning: false
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+sample_size = min(100_000, baseline_y_true.size)
+sample_rng = np.random.default_rng(42)
+sample_indices = sample_rng.choice(
+    baseline_y_true.size,
+    size=sample_size,
+    replace=False,
+)
+sample_y_true = baseline_y_true[sample_indices]
+sample_y_pred = baseline_y_pred[sample_indices]
+axis_maximum = 175
+
+bucket_names = baseline_bucket_metrics["demand_bucket"].to_list()
+bucket_positions = np.arange(len(bucket_names))
+bar_width = 0.38
+
+figure, axes = plt.subplots(
+    1,
+    2,
+    figsize=(11.5, 4.6),
+    constrained_layout=True,
+)
+
+scatter_axis = axes[0]
+scatter_axis.scatter(
+    sample_y_true,
+    sample_y_pred,
+    alpha=0.18,
+    s=6,
+)
+scatter_axis.plot(
+    [0, axis_maximum],
+    [0, axis_maximum],
+    color="black",
+    linestyle="--",
+    label="Perfect prediction",
+)
+scatter_axis.set(
+    title="Actual vs. predicted demand",
+    xlabel="Actual demand ($y_{true}$)",
+    ylabel="Predicted demand ($y_{pred}$)",
+    xlim=(0, axis_maximum),
+    ylim=(0, axis_maximum),
+)
+scatter_axis.grid(alpha=0.25)
+scatter_axis.legend()
+
+bucket_axis = axes[1]
+bucket_axis.bar(
+    bucket_positions - bar_width / 2,
+    baseline_bucket_metrics["mae"].to_numpy(),
+    width=bar_width,
+    label="MAE",
+)
+bucket_axis.bar(
+    bucket_positions + bar_width / 2,
+    baseline_bucket_metrics["avg_y_true"].to_numpy(),
+    width=bar_width,
+    label="Average $y_{true}$",
+)
+bucket_axis.set(
+    title="Performance by demand bucket",
+    xlabel="Demand bucket",
+    ylabel="Trips",
+    xticks=bucket_positions,
+    xticklabels=bucket_names,
+)
+bucket_axis.grid(axis="y", alpha=0.25)
+bucket_axis.legend()
+
+plt.show()
+```
+
+```{python}
+#| label: fig-nn-baseline-training-history
+#| fig-cap: "Training history of the census-tract 1h neural-network baseline. The dashed line marks the 20-epoch budget considered for the subsequent grid search."
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import polars as pl
+
+baseline_history_path = Path(
+    "models/full/"
+    "baseline_NN_spatial_bias_v1_"
+    "census_tracts_1h_training_history.parquet"
+)
+if not baseline_history_path.exists():
+    raise FileNotFoundError(
+        f"Missing baseline training history: {baseline_history_path}. "
+        "Run the NN-baseline notebook before rendering the report."
+    )
+
+baseline_history = pl.read_parquet(baseline_history_path).sort("epoch")
+epoch_budget = 20
+best_baseline_epoch = (
+    baseline_history.sort("val_mae").row(0, named=True)
+)
+
+figure, axes = plt.subplots(
+    1,
+    2,
+    figsize=(11.5, 4.3),
+    constrained_layout=True,
+)
+axes[0].plot(
+    baseline_history["epoch"],
+    baseline_history["train_loss"],
+    label="Train MSE",
+)
+axes[0].plot(
+    baseline_history["epoch"],
+    baseline_history["val_loss"],
+    label="Validation MSE",
+)
+axes[0].set(
+    title="Loss history – census_tracts_1h",
+    xlabel="Epoch",
+    ylabel="MSE",
+)
+
+axes[1].plot(
+    baseline_history["epoch"],
+    baseline_history["val_mae"],
+    label="Validation MAE",
+)
+axes[1].scatter(
+    [best_baseline_epoch["epoch"]],
+    [best_baseline_epoch["val_mae"]],
+    color="black",
+    zorder=3,
+    label="Best baseline epoch",
+)
+axes[1].set(
+    title="Validation MAE – census_tracts_1h",
+    xlabel="Epoch",
+    ylabel="MAE",
+)
+
+for axis in axes:
+    axis.axvline(
+        epoch_budget,
+        color="tab:red",
+        linestyle="--",
+        label="20-epoch grid-search budget",
+    )
+    axis.grid(alpha=0.25)
+    axis.legend()
+
+plt.show()
+```
+
+```{python}
+#| label: fig-nn-baseline-all-training-histories
+#| fig-cap: "Validation-MAE histories of all nine neural-network baseline models. Columns represent the temporal aggregation and rows the spatial unit; black markers identify the selected checkpoint epochs."
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import polars as pl
+
+baseline_history_directory = Path("models/full")
+spatial_history_rows = [
+    ("H3 resolution 7", "hexagon_h3r7"),
+    ("Census tracts", "census_tracts"),
+    ("Community areas", "community_areas"),
+]
+time_history_columns = ["1h", "4h", "24h"]
+
+figure, axes = plt.subplots(
+    3,
+    3,
+    figsize=(12, 8.8),
+    sharex=True,
+    constrained_layout=True,
+)
+
+for row_index, (spatial_label, model_prefix) in enumerate(
+    spatial_history_rows
+):
+    for column_index, time_unit in enumerate(time_history_columns):
+        model_tag = f"{model_prefix}_{time_unit}"
+        history_path = (
+            baseline_history_directory
+            / (
+                "baseline_NN_spatial_bias_v1_"
+                f"{model_tag}_training_history.parquet"
+            )
+        )
+        if not history_path.exists():
+            raise FileNotFoundError(
+                f"Missing baseline training history: {history_path}"
+            )
+
+        model_history = pl.read_parquet(history_path).sort("epoch")
+        best_history_epoch = (
+            model_history.sort("val_mae").row(0, named=True)
+        )
+        axis = axes[row_index, column_index]
+        axis.plot(
+            model_history["epoch"],
+            model_history["val_mae"],
+            color="tab:blue",
+            label="Validation MAE",
+        )
+        axis.scatter(
+            best_history_epoch["epoch"],
+            best_history_epoch["val_mae"],
+            color="black",
+            s=24,
+            zorder=3,
+        )
+        label_on_left = (
+            best_history_epoch["epoch"]
+            >= 0.8 * model_history["epoch"].max()
+        )
+        axis.annotate(
+            f"Epoch {int(best_history_epoch['epoch'])}",
+            (
+                best_history_epoch["epoch"],
+                best_history_epoch["val_mae"],
+            ),
+            xytext=(-5 if label_on_left else 5, 6),
+            textcoords="offset points",
+            fontsize=8,
+            horizontalalignment="right" if label_on_left else "left",
+        )
+        axis.grid(alpha=0.25)
+
+        if row_index == 0:
+            axis.set_title(time_unit)
+        if column_index == 0:
+            axis.set_ylabel(f"{spatial_label}\nValidation MAE")
+        if row_index == len(spatial_history_rows) - 1:
+            axis.set_xlabel("Epoch")
+
+plt.show()
+```
+
+## Final census-tract 1h test scores {#sec-final-census-tract-test-scores}
+
+```{python}
+#| label: tbl-final-census-tract-1h-test-scores
+#| tbl-cap: "Test-set performance of the final census-tract 1h neural network"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import Markdown, display
+
+final_test_results_path = Path(
+    "models/full/nn_final/final_nn_v1_test_results.parquet"
+)
+if not final_test_results_path.exists():
+    raise FileNotFoundError(
+        f"Missing final test results: {final_test_results_path}. "
+        "Run the final NN notebook before rendering the report."
+    )
+
+census_tract_test_result = (
+    pd.read_parquet(final_test_results_path)
+    .loc[lambda frame: frame["model_tag"].eq("census_tracts_1h")]
+)
+if len(census_tract_test_result) != 1:
+    raise ValueError(
+        "Expected exactly one final test-result row for census_tracts_1h"
+    )
+census_tract_test_result = census_tract_test_result.iloc[0]
+
+skill_vs_zero = (
+    1
+    - census_tract_test_result["nn_test_mae"]
+    / census_tract_test_result["zero_test_mae"]
+)
+skill_vs_global_median = (
+    1
+    - census_tract_test_result["nn_test_mae"]
+    / census_tract_test_result["global_median_test_mae"]
+)
+
+census_tract_test_scores = pd.DataFrame(
+    [
+        ("MAE", census_tract_test_result["nn_test_mae"]),
+        ("RMSE", census_tract_test_result["nn_test_rmse"]),
+        ("R²", census_tract_test_result["nn_test_r2"]),
+        ("Zero-demand MAE", census_tract_test_result["nn_test_zero_mae"]),
+        (
+            "Non-zero-demand MAE",
+            census_tract_test_result["nn_test_nonzero_mae"],
+        ),
+        ("Peak-demand MAE", census_tract_test_result["nn_test_peak_mae"]),
+        ("Balanced MAE", census_tract_test_result["nn_test_balanced_mae"]),
+        ("MAE Skill Score vs. zero", skill_vs_zero),
+        (
+            "MAE Skill Score vs. global median",
+            skill_vs_global_median,
+        ),
+        (
+            "MAE Skill Score vs. spatial × time × weekday",
+            census_tract_test_result["nn_test_mae_skill_score"],
+        ),
+        (
+            "Demand precision",
+            census_tract_test_result["test_demand_precision"],
+        ),
+        (
+            "Demand recall",
+            census_tract_test_result["test_demand_recall"],
+        ),
+    ],
+    columns=["Metric", "Value"],
+)
+census_tract_test_scores["Value"] = (
+    census_tract_test_scores["Value"].map(lambda value: f"{value:.4f}")
+)
+
+header = "| Metric | Value |"
+separator = "|---|---:|"
+rows = [
+    f"| {metric} | {value} |"
+    for metric, value in census_tract_test_scores.itertuples(
+        index=False,
+        name=None,
+    )
+]
+display(Markdown("\n".join([header, separator, *rows])))
+```
+
+```{python}
+#| label: fig-final-census-tract-1h-training-history
+#| fig-cap: "Training loss and validation Balanced MAE of the final census-tract 1h neural network. The selected checkpoint is marked in the validation history."
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+final_census_history_path = Path(
+    "models/full/nn_final/"
+    "final_nn_v1_census_tracts_1h_training_history.parquet"
+)
+if not final_census_history_path.exists():
+    raise FileNotFoundError(
+        f"Missing final training history: {final_census_history_path}. "
+        "Run the final NN notebook before rendering the report."
+    )
+
+final_census_history = pd.read_parquet(
+    final_census_history_path,
+    columns=["epoch", "train_loss", "val_balanced_mae"],
+).sort_values("epoch")
+best_final_history_row = final_census_history.loc[
+    final_census_history["val_balanced_mae"].idxmin()
+]
+
+figure, axes = plt.subplots(
+    1,
+    2,
+    figsize=(11.5, 4.3),
+    constrained_layout=True,
+)
+axes[0].plot(
+    final_census_history["epoch"],
+    final_census_history["train_loss"],
+    color="tab:blue",
+)
+axes[0].set(
+    title="Training loss – census_tracts_1h",
+    xlabel="Epoch",
+    ylabel="Weighted MSE",
+)
+
+axes[1].plot(
+    final_census_history["epoch"],
+    final_census_history["val_balanced_mae"],
+    color="tab:orange",
+)
+axes[1].scatter(
+    best_final_history_row["epoch"],
+    best_final_history_row["val_balanced_mae"],
+    color="black",
+    zorder=3,
+    label=f"Best epoch ({int(best_final_history_row['epoch'])})",
+)
+axes[1].set(
+    title="Validation Balanced MAE – census_tracts_1h",
+    xlabel="Epoch",
+    ylabel="Balanced MAE",
+)
+axes[1].legend()
+
+for axis in axes:
+    axis.grid(alpha=0.25)
+
+plt.show()
+```
+
+## Final model test MAE by spatial unit {#sec-final-spatial-unit-test-mae}
+
+```{python}
+#| label: fig-final-census-tract-test-mae
+#| fig-cap: "Test MAE of the final 1h models by spatial unit. All panels use the same nonlinear color scale and value range; the color-bar values remain MAE in trips per hour."
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import geopandas as gpd
+import h3
+import matplotlib.pyplot as plt
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import PowerNorm
+import polars as pl
+from shapely.geometry import Polygon
+
+final_model_directory = Path("models/full/nn_final")
+processed_data_directory = Path("data/full/processed_data")
+prediction_paths = {
+    "census_tract": (
+        final_model_directory
+        / "final_nn_v1_census_tracts_1h_test_predictions.parquet"
+    ),
+    "h3_cell": (
+        final_model_directory
+        / "final_nn_v1_hexagon_h3r7_1h_test_predictions.parquet"
+    ),
+    "community_area": (
+        final_model_directory
+        / "final_nn_v1_community_areas_1h_test_predictions.parquet"
+    ),
+}
+census_tract_geometry_path = (
+    processed_data_directory / "silver_census_tracts.geoparquet"
+)
+community_area_geometry_path = (
+    processed_data_directory / "silver_community_areas.geoparquet"
+)
+for required_path in (
+    *prediction_paths.values(),
+    census_tract_geometry_path,
+    community_area_geometry_path,
+):
+    if not required_path.exists():
+        raise FileNotFoundError(
+            f"Missing spatial MAE map input: {required_path}"
+        )
+
+def spatial_test_mae(prediction_path, spatial_column):
+    """Aggregate row-level absolute test errors to one MAE per spatial unit."""
+    return (
+        pl.scan_parquet(prediction_path)
+        .group_by(spatial_column)
+        .agg(pl.col("abs_error").mean().alias("test_mae"))
+        .collect()
+        .to_pandas()
+    )
+
+census_tract_map = gpd.read_parquet(
+    census_tract_geometry_path,
+    columns=["CENSUS_T_1", "geometry"],
+)
+# CENSUS_T_1 contains the complete 11-digit GEOID used in the prediction file.
+census_tract_map["census_tract"] = (
+    census_tract_map["CENSUS_T_1"].astype("int64")
+)
+census_tract_map = census_tract_map.merge(
+    spatial_test_mae(
+        prediction_paths["census_tract"],
+        "census_tract",
+    ),
+    on="census_tract",
+    how="left",
+    validate="one_to_one",
+)
+
+h3_test_mae = spatial_test_mae(
+    prediction_paths["h3_cell"],
+    "h3_cell",
+)
+# Convert each H3 cell from the prediction artifact into a polygon. H3 returns
+# boundary coordinates as (latitude, longitude), while Shapely expects (x, y).
+h3_map = gpd.GeoDataFrame(
+    h3_test_mae,
+    geometry=[
+        Polygon(
+            [
+                (longitude, latitude)
+                for latitude, longitude in h3.cell_to_boundary(h3_cell)
+            ]
+        )
+        for h3_cell in h3_test_mae["h3_cell"]
+    ],
+    crs="EPSG:4326",
+)
+
+community_area_map = gpd.read_parquet(
+    community_area_geometry_path,
+    columns=["AREA_NUMBE", "geometry"],
+)
+community_area_map["community_area"] = (
+    community_area_map["AREA_NUMBE"].astype("int64")
+)
+community_area_map = community_area_map.merge(
+    spatial_test_mae(
+        prediction_paths["community_area"],
+        "community_area",
+    ),
+    on="community_area",
+    how="left",
+    validate="one_to_one",
+)
+
+spatial_maps = [
+    ("Census tracts", census_tract_map),
+    ("H3 resolution 7", h3_map),
+    ("Community areas", community_area_map),
+]
+for spatial_name, spatial_map in spatial_maps:
+    if spatial_map["test_mae"].isna().any():
+        missing_units = int(spatial_map["test_mae"].isna().sum())
+        raise ValueError(
+            f"Test MAE is missing for {missing_units} units in {spatial_name}"
+        )
+
+# A common normalization makes colors directly comparable across all three
+# spatial definitions. The power transformation reveals variation near zero
+# without truncating high-error units or changing the values on the color bar.
+maximum_test_mae = max(
+    float(spatial_map["test_mae"].max())
+    for _, spatial_map in spatial_maps
+)
+color_normalization = PowerNorm(
+    gamma=0.35,
+    vmin=0,
+    vmax=maximum_test_mae,
+)
+
+# Use a common map extent so that the three spatial partitions align visually.
+minimum_x = min(spatial_map.total_bounds[0] for _, spatial_map in spatial_maps)
+minimum_y = min(spatial_map.total_bounds[1] for _, spatial_map in spatial_maps)
+maximum_x = max(spatial_map.total_bounds[2] for _, spatial_map in spatial_maps)
+maximum_y = max(spatial_map.total_bounds[3] for _, spatial_map in spatial_maps)
+x_padding = (maximum_x - minimum_x) * 0.02
+y_padding = (maximum_y - minimum_y) * 0.02
+
+figure, axes = plt.subplots(
+    1,
+    3,
+    figsize=(13.5, 5.2),
+    constrained_layout=True,
+)
+for axis, (spatial_name, spatial_map) in zip(axes, spatial_maps):
+    spatial_map.plot(
+        column="test_mae",
+        cmap="YlOrRd",
+        norm=color_normalization,
+        linewidth=0.18,
+        edgecolor="white",
+        ax=axis,
+    )
+    axis.set(
+        title=spatial_name,
+        xlim=(minimum_x - x_padding, maximum_x + x_padding),
+        ylim=(minimum_y - y_padding, maximum_y + y_padding),
+    )
+    axis.set_axis_off()
+
+color_mapper = ScalarMappable(
+    norm=color_normalization,
+    cmap="YlOrRd",
+)
+color_mapper.set_array([])
+figure.colorbar(
+    color_mapper,
+    ax=axes,
+    label="Test MAE (trips per hour)",
+    fraction=0.025,
+    pad=0.02,
+    shrink=0.78,
+)
+plt.show()
+```
+
+## Final model skill scores against baselines {#sec-final-skill-baselines}
+
+```{python}
+#| label: fig-final-mae-skill-trivial-baselines
+#| fig-cap: "Final-model test MAE Skill Scores against the zero, global-median, and spatial × time × weekday baselines. Positive values indicate that the neural network has a lower test MAE than the respective baseline. The broken x-axis preserves the extreme negative score of the unfiltered 24h model while keeping the other scores readable."
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+final_test_results_path = Path(
+    "models/full/nn_final/final_nn_v1_test_results.parquet"
+)
+if not final_test_results_path.exists():
+    raise FileNotFoundError(
+        f"Missing final test results: {final_test_results_path}. "
+        "Run the final NN notebook before rendering the report."
+    )
+
+final_skill_scores = pd.read_parquet(
+    final_test_results_path,
+    columns=[
+        "model_tag",
+        "nn_test_mae",
+        "zero_test_mae",
+        "global_median_test_mae",
+        "spatial_time_weekday_mean_test_mae",
+        "nn_test_mae_skill_score",
+    ],
+)
+reference_mae_columns = [
+    "zero_test_mae",
+    "global_median_test_mae",
+    "spatial_time_weekday_mean_test_mae",
+]
+if (final_skill_scores[reference_mae_columns] <= 0).any().any():
+    raise ValueError(
+        "MAE Skill Scores require strictly positive baseline MAEs"
+    )
+
+# Use the same order as the existing skill-score plot against the
+# spatial × weekday × time baseline in the final NN notebook.
+final_skill_scores = final_skill_scores.sort_values(
+    "nn_test_mae_skill_score",
+)
+final_skill_scores["skill_vs_zero"] = (
+    1
+    - final_skill_scores["nn_test_mae"]
+    / final_skill_scores["zero_test_mae"]
+)
+final_skill_scores["skill_vs_global_median"] = (
+    1
+    - final_skill_scores["nn_test_mae"]
+    / final_skill_scores["global_median_test_mae"]
+)
+final_skill_scores["skill_vs_spatial_time_weekday"] = (
+    1
+    - final_skill_scores["nn_test_mae"]
+    / final_skill_scores["spatial_time_weekday_mean_test_mae"]
+)
+
+dataset_positions = np.arange(len(final_skill_scores))
+bar_height = 0.24
+
+figure, (outlier_axis, main_axis) = plt.subplots(
+    1,
+    2,
+    sharey=True,
+    figsize=(12, 6.7),
+    gridspec_kw={
+        "width_ratios": [1, 5],
+        "wspace": 0.04,
+    },
+)
+skill_score_series = [
+    (
+        "skill_vs_zero",
+        "Zero baseline",
+        "tab:blue",
+        -bar_height,
+    ),
+    (
+        "skill_vs_global_median",
+        "Global-median baseline",
+        "tab:orange",
+        0,
+    ),
+    (
+        "skill_vs_spatial_time_weekday",
+        "Spatial × time × weekday baseline",
+        "tab:green",
+        bar_height,
+    ),
+]
+for axis in (outlier_axis, main_axis):
+    for column, label, color, offset in skill_score_series:
+        axis.barh(
+            dataset_positions + offset,
+            final_skill_scores[column],
+            height=bar_height,
+            label=label,
+            color=color,
+        )
+    axis.grid(axis="x", alpha=0.25)
+
+# One spatial-baseline score is around -4.8, whereas all other scores lie
+# between roughly -0.65 and 0.75. The split retains the actual linear values
+# in both ranges without compressing the remaining bars.
+outlier_axis.set_xlim(-5.1, -4.5)
+main_axis.set_xlim(-0.75, 0.8)
+main_axis.axvline(0, color="black", linewidth=1)
+outlier_axis.set(
+    ylabel="Dataset",
+    yticks=dataset_positions,
+    yticklabels=final_skill_scores["model_tag"],
+)
+main_axis.tick_params(
+    axis="y",
+    left=False,
+    labelleft=False,
+)
+outlier_axis.spines["right"].set_visible(False)
+main_axis.spines["left"].set_visible(False)
+
+# Diagonal marks indicate the omitted interval between the two x-axis ranges.
+break_size = 0.012
+break_style = {
+    "color": "black",
+    "clip_on": False,
+    "linewidth": 1,
+}
+outlier_axis.plot(
+    (1 - break_size, 1 + break_size),
+    (-break_size, break_size),
+    transform=outlier_axis.transAxes,
+    **break_style,
+)
+outlier_axis.plot(
+    (1 - break_size, 1 + break_size),
+    (1 - break_size, 1 + break_size),
+    transform=outlier_axis.transAxes,
+    **break_style,
+)
+main_axis.plot(
+    (-break_size, break_size),
+    (-break_size, break_size),
+    transform=main_axis.transAxes,
+    **break_style,
+)
+main_axis.plot(
+    (-break_size, break_size),
+    (1 - break_size, 1 + break_size),
+    transform=main_axis.transAxes,
+    **break_style,
+)
+
+legend_handles, legend_labels = main_axis.get_legend_handles_labels()
+figure.legend(
+    legend_handles,
+    legend_labels,
+    loc="upper center",
+    bbox_to_anchor=(0.62, 1.01),
+    ncol=3,
+)
+figure.supxlabel("Test MAE Skill Score")
+figure.tight_layout(rect=(0, 0.04, 1, 0.93))
+plt.show()
+```
+
+## Neural-network grid search {#sec-nn-grid-search}
+
+```{python}
+#| label: tbl-nn-grid-stage-one
+#| tbl-cap: "Models evaluated in Stage 1 of the neural-network grid search"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import Markdown, display
+
+stage_one_path = Path(
+    "models/full/nn_grid_search/grid_search_v1_stage_1_validation_results.parquet"
+)
+if not stage_one_path.exists():
+    raise FileNotFoundError(
+        f"Missing Stage-1 results: {stage_one_path}. "
+        "Run the NN grid-search notebook before rendering the report."
+    )
+
+stage_one_results = pd.read_parquet(
+    stage_one_path,
+    columns=[
+        "strategy",
+        "positive_weight",
+        "zero_to_positive_ratio",
+    ],
+)
+stage_one_results.insert(
+    0, "Model", [f"S1-{index}" for index in range(1, len(stage_one_results) + 1)]
+)
+stage_one_results["Strategy parameter"] = stage_one_results.apply(
+    lambda row: (
+        f"positive weight = {row['positive_weight']:g}"
+        if pd.notna(row["positive_weight"])
+        else (
+            f"zero:positive = {row['zero_to_positive_ratio']:g}"
+            if pd.notna(row["zero_to_positive_ratio"])
+            else "--"
+        )
+    ),
+    axis=1,
+)
+stage_one_results = (
+    stage_one_results[
+        [
+            "Model",
+            "strategy",
+            "Strategy parameter",
+        ]
+    ]
+    .rename(
+        columns={
+            "strategy": "Strategy",
+        }
+    )
+)
+
+def display_without_index(frame):
+    """Render a compact Markdown table without pandas' index column."""
+    def format_value(value):
+        if pd.isna(value):
+            return "--"
+        return str(value).replace("|", "\\|")
+
+    header = "| " + " | ".join(frame.columns) + " |"
+    separator = "| " + " | ".join("---" for _ in frame.columns) + " |"
+    rows = [
+        "| " + " | ".join(format_value(value) for value in row) + " |"
+        for row in frame.itertuples(index=False, name=None)
+    ]
+    display(Markdown("\n".join([header, separator, *rows])))
+
+
+display_without_index(stage_one_results)
+```
+
+```{python}
+#| label: tbl-nn-grid-stage-two
+#| tbl-cap: "Models evaluated in Stage 2 of the neural-network grid search"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+from IPython.display import Markdown, display
+
+stage_two_path = Path(
+    "models/full/nn_grid_search/grid_search_v1_stage_2_validation_results.parquet"
+)
+if not stage_two_path.exists():
+    raise FileNotFoundError(
+        f"Missing Stage-2 results: {stage_two_path}. "
+        "Run the NN grid-search notebook before rendering the report."
+    )
+
+stage_two_results = pd.read_parquet(
+    stage_two_path,
+    columns=[
+        "positive_weight",
+        "hidden_dims",
+        "learning_rate",
+    ],
+)
+stage_two_results.insert(
+    0, "Model", [f"S2-{index}" for index in range(1, len(stage_two_results) + 1)]
+)
+stage_two_results = (
+    stage_two_results[
+        [
+            "Model",
+            "positive_weight",
+            "hidden_dims",
+            "learning_rate",
+        ]
+    ]
+    .rename(
+        columns={
+            "positive_weight": "Positive weight",
+            "hidden_dims": "Hidden layers",
+            "learning_rate": "Learning rate",
+        }
+    )
+    .round({"Learning rate": 4})
+)
+
+display_without_index(stage_two_results)
+```
+
+```{python}
+#| label: tbl-nn-grid-performance
+#| tbl-cap: "Validation performance of all Stage-1 and Stage-2 grid-search models"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import pandas as pd
+
+performance_columns = [
+    "best_epoch",
+    "nn_val_balanced_mae",
+    "nn_val_mae_skill_score",
+]
+stage_one_performance = pd.read_parquet(
+    Path(
+        "models/full/nn_grid_search/"
+        "grid_search_v1_stage_1_validation_results.parquet"
+    ),
+    columns=performance_columns,
+)
+stage_one_performance.insert(
+    0, "Model", [f"S1-{index}" for index in range(1, len(stage_one_performance) + 1)]
+)
+stage_one_performance.insert(0, "Stage", 1)
+
+stage_two_performance = pd.read_parquet(
+    Path(
+        "models/full/nn_grid_search/"
+        "grid_search_v1_stage_2_validation_results.parquet"
+    ),
+    columns=performance_columns,
+)
+stage_two_performance.insert(
+    0, "Model", [f"S2-{index}" for index in range(1, len(stage_two_performance) + 1)]
+)
+stage_two_performance.insert(0, "Stage", 2)
+
+grid_search_performance = (
+    pd.concat([stage_one_performance, stage_two_performance], ignore_index=True)
+    .rename(
+        columns={
+            "best_epoch": "Best epoch",
+            "nn_val_balanced_mae": "Balanced MAE",
+            "nn_val_mae_skill_score": "MAE skill score",
+        }
+    )
+    .round(
+        {
+            "Balanced MAE": 4,
+            "MAE skill score": 4,
+        }
+    )
+)
+
+display_without_index(grid_search_performance)
+```
+
+## Grid-search winner training history {#sec-nn-grid-winner-history}
+
+```{python}
+#| label: fig-nn-grid-winner-history
+#| fig-cap: "Training loss and validation Balanced MAE of the selected Stage-2 grid-search model"
+#| echo: false
+#| warning: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+winner_history_path = Path(
+    "models/full/nn_grid_search/"
+    "grid_search_v1_census_tracts_1h_"
+    "s2_weighted_pw5_h128-64_lr0p001_training_history.parquet"
+)
+if not winner_history_path.exists():
+    raise FileNotFoundError(
+        f"Missing winner training history: {winner_history_path}. "
+        "Run the NN grid-search notebook before rendering the report."
+    )
+
+winner_history = pd.read_parquet(
+    winner_history_path,
+    columns=["epoch", "train_loss", "val_balanced_mae"],
+).sort_values("epoch")
+best_history_row = winner_history.loc[
+    winner_history["val_balanced_mae"].idxmin()
+]
+
+figure, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+
+axes[0].plot(
+    winner_history["epoch"],
+    winner_history["train_loss"],
+    color="tab:blue",
+)
+axes[0].set(
+    title="Training loss",
+    xlabel="Epoch",
+    ylabel="Weighted MSE",
+)
+
+axes[1].plot(
+    winner_history["epoch"],
+    winner_history["val_balanced_mae"],
+    color="tab:orange",
+)
+axes[1].scatter(
+    best_history_row["epoch"],
+    best_history_row["val_balanced_mae"],
+    color="black",
+    zorder=3,
+    label=f"Best epoch ({int(best_history_row['epoch'])})",
+)
+axes[1].set(
+    title="Validation Balanced MAE",
+    xlabel="Epoch",
+    ylabel="Balanced MAE",
+)
+axes[1].legend()
+
+for axis in axes:
+    axis.grid(alpha=0.25)
+
+figure.tight_layout()
+plt.show()
 ```

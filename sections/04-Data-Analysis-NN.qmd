@@ -5,6 +5,11 @@
     - Avg Spatial x Time x Weekday
     - Global median
 
+    - see @tbl-trivial-baseline-test-mae
+
+- General validation strategy:
+    - Test only for final model and comparison SVM vs 
+
 - Target and Features
     - We selected "trip_count" as target for the demand, as this will tell us how many taxi trips were started in one spatial time unit
     - Features: cyclic encoding of hour, weekday and month; weather data; holiday flag and POI information; all other taxi related columns were removed as it would otherwise lead to leakage
@@ -13,46 +18,59 @@
     - Spatial Encoding is needed as the spatial units are otherwise interpreted as continiuos feature
     - StandardScaler for the feature_cols fitted on training data only
 
-- First Baseline NN
-    - Model Architecture in @tbl-nn-baseline-architecture
-    -  First we trained a very simple NN on all filtered datasets
-    -  The model architecture is has two hidden layer, the first with 64 Neurons and the second with 32 Neurons.
-    -  As activation function we use ReLu and the output layer uses Softplus function to make all predictions >= 0
-    - Loss Function: MSE 
-    - Selection Criteria of best model: MAE
-    - with Adam as Optimizer and a learning rate of 0.001
-    - we uses seed 42 for reproduceability
+In this section we describe the approach of developing and evaluating a neural network as prediction model. Our approach is divided into three sequential steps. 
+First we developed a simple and reproduceable baseline NN, second we performed a grid search based on the findings of the baseline NN 
+and lastly we trained a final model based on the grid search results.
 
-    - The validation results of all neural-network baseline models are presented in @tbl-nn-baseline-results.
+The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision. Within this development phase
+our main goal was to determine whether NN can generally perform better compared to the baseline and which spatial-time-unit is most suited.
+The architecture of the baseline NN is kept simple with two hidden layers (64 and 32), ReLu activiation function and a spatial encoding for the 
+categorical spatial units. The numerical features were scaled using the StandardScaler, which was fitted only on the train set.
+In @tbl-nn-baseline-architecture and @tbl-nn-baseline-training we present the architecture and trainings configuration.
+The checkpoint-selection metric, which determines the best model troughout the epochs, is MAE on the validation set. We decided to use MAE, because it is 
+simple and very good interpretable. However, MAE is not suitable for comparisons between different spatial-time-units. Therefore, to compare different
+spatial-time-units we calculate a MAE Skill Score, which is 1 - val MAE / baseline MAE, where we selected the mean spatial x time x weekday
+as baseline. This means that a MAE Skill Score of 0 means no improvement compared to the baseline predictions, while a positive values shows
+an improvement. In @tbl-nn-baseline-results the results of the baseline NN are shown. The spatial-time-unit census_tract_1h is
+the only dataset with a positive MAE skill score, however the score is also very close to zero with 0.0043. From the table it is Further
+observable that the datasets on 24h time bucket are performing worst. Notebly all datasets despite community_area_24h outperform the always zero prediction.
+The worse performance of 24h may be due to the significant lower training size of the 
+24h datasets. We decided to have a closer look at the best performing model for census_tract_1h and the plots in @fig-nn-baseline-diagnostics
+show that the model has a particular weakness for predicting higher demand. 
+
+- Show	 how	 you	 model’s	 performance	 varies	 as	 you	 increase	 or	 decrease	 temporal	 or	 spatial	
+resolution
+
+@fig-nn-baseline-all-training-histories
+
+Therefore we decided that the main focus for the next NN should be to distinguish between zero and real demand. A first step was to switch the 
+checkpoint-selection metric from MAE to Balanced MAE, where Balanced MAE is 0,5 * non-zero MAE + 0,5 * zero-MAE, thereby trying to ensure that 
+zero-demand is not entirely driving the training. The second step was to perform a grid search in two stages. The first stage was exploring
+two strategies of dealing with the problem of zero-demand: undersampling and weighted training. The search space contains for each stragety three settings, which are shown in @tbl-nn-grid-stage-one.
+In the first stage of the grid search the architecture was fixed to the architecture of the baseline and each model was trained for 20 epochs. We considered 20 epochs to be sufficient as it could be observed 
+in the trainings history of the baseline model for census_tract_1h that the loss slows down decreasing at around 7 to 12 epochs (see @fig-nn-baseline-training-history). The results of the first stage are
+shown in @tbl-nn-grid-performance. Notebly all models perform worse than the spatial x time x weekday baseline, as all models have a negative MAE skill score. But this may be due to the 
+limited trainings epochs as all runs have their best epoch very close to 20. Despite it is evidence that weighting is performing better than 
+undersampling. All three runs with weights have higher MAE skill scores than the ones with undersampling. Therefore weighted loss is selected as strategy and used in the second stage of the grid search,
+where we tested different model architectures and learning rates. In @tbl-nn-grid-stage-two the search space of the second stage is shown. The results of the second stage as shown in @tbl-nn-grid-performance
+show again mainly negative MAE skill scores and best epochs close to the maximum number of epochs. The model S2-7 with the hidden layers 128-64, learning rate of 0.001 and a weight of 5 for positive demand
+performed best with a score of 0.0014 and balanced MAE of 2.7877. The best balanced MAE was achieved in epoch 29 of 30 (see @fig-nn-grid-winner-history), which highlights that further training with more epochs may increase the performance.
+
+The final model is therefore trained on the architecture and trainings configuration of the model S2-7 but with 100 epochs and a patience of 10. Despite giving a maximum of 100 epochs the best model was
+trained in epoch 26 (see @fig-final-census-tract-1h-training-history) with a balanced MAE of 2.8775 and spatial x time x weekday skill score of 0.0253. The final model is therefore slightly better than the baseline and the
+NN baseline. The final model has a zero-demand MAE of 0.0123 and a non-zero demand MAE of 5.7427. The large gap between these two MAE's shows that also for the final model the main difficulty is that zero-demand 
+dominates the training and the model struggles to predict higher demand. This is also evident from the fact that the peak-demand MAE is with 17.1399 much higher than the non-zero-demand MAE and that the recall with 0.7162 is lower than 
+the precision with 0.8123. The model struggles to predict real demand, but if it does so it is more certain. All the test-set performance metric are shown in @tbl-final-census-tract-1h-test-scores.
 
 
-How did we handle the problem of sparse temporal spatial data:
-- we decided to keep them, as they reflect actual data and removing them would distort the data
-- weights
-- Loss-Function
-- selection_score
 
-Model, Architecture and Training
-v5 introduces embedding of community_area
+The fact that the recall is lower than the precision also leads us to propose improvements for a follow-up project. We recommend that prior to the regressions predicts a classifier model should predict the probability of low or high demand.
+Further we recommend exploring separate regression models for low and high demand. The final prediction could then be an ensemble of the classification, low and high demand prediction, e. g.
+final prediction = p_high * high_model_pred + (1-p_high) * low_model_pred.
 
-Grid Search for Hyperparameters:
 
-Relativly small search space (can be justified because we already trained some NNs):
-search_space = {
-    "dropout_rate": [0.0, 0.1, 0.2],
-    "weight_decay": [0.0, 1e-6, 1e-5, 1e-4],
-    "lr": [1e-3, 5e-4],
-    "loss_beta": [0.25, 0.5, 1.0],
-    "high_weight": [2.0, 3.0, 5.0, 8.0],
-}
+Despite the grid search was conducted only on the census_tract_1h dataset, we decided
+to train the final model S2-7 on all datasets. Of course the comparison of the final model performance between the dataset is therefore not completely fair.
 
-Advanced MAE Performance Measure:
-
-E. g.:
-selection_score = overall_mae + alpha * high_demand_mae
-
-More advanced NN model:
-
-2 NNs one for high, one for low demand:
-1. Classifier predicts probability for high demand 
-2. final prediction = p_high * high_model_pred + (1 - p_high) * low_model_pred
+    - @fig-final-census-tract-test-mae
+    - @fig-final-mae-skill-trivial-baselines
