@@ -64,20 +64,23 @@ here the decision can be made whether
 
 ## Results
 
-## Recommendation
-If SVMs are desired, the time frame should be short and the spatial unit should be hexagons.
+
 
 ## Further Improvement
 
-In case, we want to keep using SVMs. We would try 
+In case, we want to keep using SVMs. We would try getting a good performance first to be able to test different things quickly. We would also consider more different approaches towards datasets with a lot of zeroes. These include approaches such as ZeroInflatedRegressor[@vincent_d_warmerdam_2026_21210295] where you use both a Classifier as well as a Regression. We have tried this but it was not fully working on ourndataset.
 
+An even more important step would be to do the data preparation in a way that we end up with less zeroes in our dataset. 
+
+
+In the event that an exchange of support vector machines (SVMs) to other models with different approaches is considered, models that demonstrate greater efficacy with the target, including a significant amount of zeros, should be considered. One example that illustrates this is ZeroInflatedPoisson[@josef_perktold_2024_10984387].
 
 
 
 The next time we would find us with a big dataset, instead of finding the first thing should be to fit the model in a reasonable time.
 Once this is established the model fitting can be achieved.
 We need to either change the way the data preparation is done and potentially exclude spatial units outside the city which are shown to have a lot of zeroes.
-Or change to a model which can better handle an excess of zeroes. One of such models would be the ZeroInflatedPoisson[@quelle]-
+Or change to a model which can better handle an excess of zeroes. One of such models would be the ZeroInflatedPoisson[@josef_perktold_2024_10984387]-
 The first improvement we would recommend it to use data, that does not consist of a lot of trip count zero.
 This lead to bad convergance during the grid search as well as the model fitting.
 The next time we would also recommend to directly develop the model to run on GPU due to the significant amount of data.

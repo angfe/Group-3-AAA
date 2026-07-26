@@ -1,88 +1,25 @@
-# Appendix {.appendix}
+# Appendix SVM
 
-| Component | Input dimension | Output dimension | Activation |
-|---|---:|---:|---|
-| Numeric input | $n_{\text{features}}$ | $n_{\text{features}}$ | -- |
-| Hidden layer 1 | $n_{\text{features}}$ | 64 | ReLU |
-| Hidden layer 2 | 64 | 32 | ReLU |
-| Numeric output | 32 | 1 | Linear |
-| Spatial bias | Spatial-unit ID | 1 | -- |
-| Combination | Numeric score + spatial bias | 1 | Addition |
-| Final output | 1 | 1 | Softplus |
+## Bug found in cuml
+Cuml appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time. 
 
-: Architecture of the neural-network baseline {#tbl-nn-baseline-architecture}
+## Steps in developing SVM
 
-The spatial bias is implemented as a one-dimensional embedding. It represents an
-additive spatial intercept rather than a multidimensional representation-learning
-embedding. Index zero is reserved for spatial units not observed in the training
-split and has no learned effect.
+These are the changes we made during the developement of the svm in steps and why we decided on them:
+- We started with a basic svr on an rbf kernel which is the basic kernel for scikits[@@sklearn_api; @scikit-learn] implementation of svms.
+- Then we added grid search to find good hyperparameter.
+- SVM work better on scaled data, therefore we added a StandardScaler[@sklearn_api; @scikit-learn].
+- Since we were running into runtime issues we changed changed grid search to only include the hyperparameter relevant for each kernel.
+- To further counteract these issues we added Nystroem[@sklearn_api; @scikit-learn].
+- Due to the same reason, we changed GridSearchCV[@sklearn_api; @scikit-learn] to RandomSearchCV.
+- Since we were using a pipeline now we also added the StandardScaler to the Pipeline[].
+- Since we were still runnig into issues withe the runtime and to get a better performing SVR we added TransformedTargetRegressor[@sklearn_api; @scikit-learn].
+- For the same reason as before we added cashing(memory) to the pipeline.
+- The SVM with the kernel linear was changed to LinearSVM[@sklearn_api; @scikit-learn].
+- Use cuml[@rapids_cuml] to run model on the GPU instead of the CPU.
+- Find a good subset of hyperparameter through testing.
+- Changed from RandomSearchCV to HalvingGridSearchCV. Used  RandomSearchCV before since HalvingGridSearchCV is still experimental. For our data HalvingGridSearchCV seems to work better[@sklearn_api; @scikit-learn]. 
 
-## Neural-network baseline training configuration {#sec-nn-baseline-training}
 
-| Setting | Configuration |
-|---|---|
-| Datasets | H3 resolution 7, census tracts, and filtered community areas |
-| Temporal units | 1h, 4h, and 24h |
-| Number of models | 9 |
-| Training objective | Mean squared error (MSE) |
-| Optimizer | Adam |
-| Learning rate | 0.001 |
-| Batch size | 1,024 |
-| Maximum epochs | 100 |
-| Early-stopping patience | 10 epochs |
-| Minimum improvement | 0 |
-| Checkpoint-selection metric | Validation MAE |
-| Output constraint | Softplus activation |
-| Numerical preprocessing | StandardScaler fitted exclusively on TRAIN |
-| Spatial preprocessing | Categorical mapping fitted exclusively on TRAIN |
-| Reproducibility | Dataset-specific seed, starting at 42 |
-| Model development split | TRAIN for fitting and VAL for model selection |
-| Final evaluation split | TEST remains unused during model development |
-
-: Training configuration of the neural-network baseline {#tbl-nn-baseline-training}
-
-## Neural-network baseline validation results {#sec-nn-baseline-results}
-
-```{python}
-#| label: tbl-nn-baseline-results
-#| tbl-cap: "Validation results of the neural-network baseline models"
-#| echo: false
-#| warning: false
-
-from pathlib import Path
-
-import pandas as pd
-
-results_path = Path(
-    "models/full/baseline_NN_spatial_bias_v1_validation_results.parquet"
-)
-if not results_path.exists():
-    raise FileNotFoundError(
-        f"Missing baseline results: {results_path}. "
-        "Run the NN-baseline notebook in Full Mode before rendering the report."
-    )
-
-baseline_results = (
-    pd.read_parquet(
-        results_path,
-        columns=[
-            "model_tag",
-            "nn_val_mae",
-            "spatial_time_weekday_mean_val_mae",
-            "nn_val_mae_skill_score",
-        ],
-    )
-    .sort_values("nn_val_mae_skill_score", ascending=False)
-    .rename(
-        columns={
-            "model_tag": "Model",
-            "nn_val_mae": "NN MAE",
-            "spatial_time_weekday_mean_val_mae": "Naive baseline MAE",
-            "nn_val_mae_skill_score": "MAE skill score",
-        }
-    )
-    .round(4)
-)
-
-baseline_results
-```
+## Pipeline SVR/SVC
+- 
