@@ -1466,3 +1466,53 @@ These are the changes we made during the developement of the svm in steps and wh
 ![Statistics of SVC](./report_assets/figures/appendix/svc_hexa.png){#fig-heatmap width=80%}
 
 The current result of the SVC does not look good. Due to the focus on the SVR, we were unable to further develope this model.
+
+## Appendix: Reinforcement Learning
+
+### Cost Coefficient Calibration
+The charging cost at each timestep follows an exponential form: $c_t = \alpha_t \cdot e^{a}$, where $a$ is the discrete action index (0 = off, 1 = low, 2 = medium, 3 = high) and $\alpha_t$ is the time-varying cost coefficient.
+
+We calibrated $\alpha_t$ to match real Chicago home charging rates of \$0.11–\$0.16 per kWh. At medium power (action = 2, corresponding to 14 kW and delivering 3.5 kWh per 15-minute step):
+
+- Cheap end (\$0.11/kWh): $\alpha = 0.11 \times 3.5 \,/\, e^2 \approx 0.052$
+- Expensive end (\$0.16/kWh): $\alpha = 0.16 \times 3.5 \,/\, e^2 \approx 0.076$
+
+The coefficient increases linearly across the eight timesteps, yielding:
+
+| Timestep | 2:00 | 2:15 | 2:30 | 2:45 | 3:00 | 3:15 | 3:30 | 3:45 |
+|----------|------|------|------|------|------|------|------|------|
+| $\alpha_t$ | 0.052 | 0.055 | 0.058 | 0.061 | 0.064 | 0.067 | 0.072 | 0.076 |
+
+: Time-varying cost coefficients per timestep. {#tbl-rl-cost-coeffs}
+
+### Hyperparameters
+
+| Parameter | Q-Learning | DQN |
+|-----------|-----------|-----|
+| Episodes | 20,000 | 20,000 |
+| Discount factor ($\gamma$) | 0.99 | 0.99 |
+| Learning rate | 0.1 | 0.001 |
+| Epsilon (start) | 1.0 | 1.0 |
+| Epsilon (min) | 0.01 | 0.01 |
+| Epsilon decay | 0.9995 | 0.9995 |
+| Hidden layer size | — | 64 |
+| Replay buffer size | — | 20,000 |
+| Batch size | — | 64 |
+| Target network update | — | every 100 episodes |
+| Optimizer | — | Adam |
+
+: Hyperparameter settings for Q-Learning and DQN. {#tbl-rl-hyperparams}
+
+### Training Convergence
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-q-learning-curve >}}
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-dqn-learning-curve >}}
+
+### Learned Policy Heatmap
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-policy-heatmap >}}
+
+### Cost Distribution
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-cost-distribution >}}
