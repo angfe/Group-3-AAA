@@ -1,96 +1,160 @@
 # Data Analysis
 
-In the following section we describe the development and evaluation of models to predict the demand. We understand demand as the count of trips, whereby a 
-trip is understand as a successful pickup of a customer. Therefore we select the column "trip_count" as the target for this analysis. The remaining 
-columns are used as features and contain cyclic encoded hour, weekday and month, weather data, holiday flag and point-of-interest information. The underlying idea is
-that weather data, holiday flag and point-of-interest data improve the performance of our prediction. To verify this, we first of all need to determine a simple prediction 
-against which we can compare the prediction models SVM and NN. We introduce two baseline predictions: zero prediction and the mean of spatial unit x time x weekday. 
-The latter baseline is the most challenging one, as it already contains spatial and time related information of the demand. To evaluate the performance we decided to use mainly the MAE, 
-which expresses the mean absolute deviation between the predicted and observed value. This metric is easy to interpret and helps our customer to get a sense of the performance. 
-The MAE performance of these baseline is shown in @tbl-trivial-baseline-test-mae.
+In this section we evaluate whether NN and SVM models improve demand prediction. The target, features and preprocessing are shown in @tbl-nn-target-features. We compare the models with an always zero prediction and a spatial × time × weekday mean. The second baseline is stronger because it already represents the main recurring demand patterns. Our primary metric is MAE. It measures the average absolute difference between predicted and observed trips. The baseline results are shown in @tbl-trivial-baseline-test-mae.
 
-- Preprocessing steps:
-    - Spatial Encoding is needed as the spatial units are otherwise interpreted as continiuos feature
-    - StandardScaler for the feature_cols fitted on training data only
+## NN
 
-- ggf Train Test Split
+The NN development consists of a baseline model, a two stage grid search and final retraining. The baseline model was trained for every spatial and temporal configuration. It uses two hidden layers with 64 and 32 nodes, ReLU activations and a spatial bias. Numerical inputs were standardized using training data only. The full architecture and training configuration are reported in @tbl-nn-baseline-architecture and @tbl-nn-baseline-training.
+The best baseline checkpoint for each configuration was selected by validation MAE. Raw MAE values cannot be compared directly across aggregation levels because the demand scale changes. We therefore also use an MAE Skill Score relative to the spatial × time × weekday baseline. A positive value means that the NN improves on this baseline. Only Census Tracts at 1 hour resolution achieve a positive score. The improvement is very small at 0.0043. The 24 hour models perform worst. This may partly result from their smaller training sets. Diagnostics for Census Tracts at 1 hour also show that the model has particular difficulty with high demand. The complete baseline results and diagnostics are shown in @tbl-nn-baseline-results and @fig-nn-baseline-diagnostics.
 
-## Neural Network
+These findings led us to focus on positive demand during the grid search. We used Balanced MAE for model selection. It gives equal importance to zero and positive demand observations. Stage one compared standard training, positive demand weighting and undersampling. The tested configurations are reported in @tbl-nn-grid-stage-one. All stage one models remained below the spatial × time × weekday baseline. However, weighting performed consistently better than undersampling. Stage two therefore combined the most promising weighting strategies with different architectures and learning rates. The search space and results are shown in @tbl-nn-grid-stage-two and @tbl-nn-grid-performance.
+Model S2-7 performed best in the grid search. It uses hidden layers with 128 and 64 nodes, a learning rate of 0.001 and a weight of 5 for positive demand. It reached a validation Balanced MAE of 2.7877 and an MAE Skill Score of 0.0014. The best result occurred in epoch 29 of 30. This supported retraining with a larger epoch budget. Its training history is shown in @fig-nn-grid-winner-history.
 
-The development of the Neural Network is divided into three sequential steps. First we developed a simple and reproduceable baseline NN, second we performed a grid search based on the findings of the baseline NN 
-and lastly we trained a final model based on the grid search results. The purpose of the baseline NN is to observe and evaluate if and in what degree performance improvements are likely possible. 
-The grid search is a method for a structured comparison of different architectures and parameter settings. A final retraining is necessary as the purpose of the grid search is not to train the model
-to the end but to find the most promising one.
+The final model uses this configuration with up to 100 epochs and an early stopping patience of 10. The checkpoint selected at epoch 26 achieved a validation Balanced MAE of 2.9319. On the TEST set, the model achieved a Balanced MAE of 2.8775 and an MAE Skill Score of 0.0253. This represents only a small improvement over the spatial × time × weekday baseline.
+The difference between demand groups is very important for operations. The zero demand MAE is 0.0123, while the positive demand MAE is 5.7427. Peak demand MAE rises to 17.1399. Despite positive demand weighting, the model remains much more accurate when no trips occur. Precision is 0.8123 and recall is 0.7162. The model is therefore relatively reliable when it predicts demand, but it misses part of the observed demand. The full TEST results are shown in @tbl-final-census-tract-1h-test-scores and @fig-final-census-tract-test-mae.
 
-The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision between them. 
-The architecture of the baseline NN is kept simple with two hidden layers (64 and 32), ReLu activiation function and a spatial encoding for the 
-categorical spatial units. A spatial encoding is necessary, because the spatial ID is a categorical value. The numerical features were scaled using the StandardScaler, which was fitted only on the train set. 
-After this scaling the features have a mean close to 0 and variance close to 1. This is helpful as distances between values of features are standardized. 
-In @tbl-nn-baseline-architecture and @tbl-nn-baseline-training we present the architecture and trainings configuration.
-The checkpoint-selection metric, which determines the best model troughout the epochs, is MAE on the validation set. We decided to use MAE, because it is 
-simple and very good interpretable. However, MAE is not suitable for comparisons between different spatial-time-units. Therefore, to compare different
-spatial-time-units we calculate a MAE Skill Score, which is 1 - val MAE / baseline MAE, where we selected the mean spatial x time x weekday
-as baseline. This means that a MAE Skill Score of 0 means no improvement compared to the baseline predictions, while a positive values shows
-an improvement. In @tbl-nn-baseline-results the results of the baseline NN are shown. The spatial-time-unit census_tract_1h is
-the only dataset with a positive MAE skill score, however the score is also very close to zero with 0.0043. From the table it is Further
-observable that the datasets on 24h time bucket are performing worst. Notebly all datasets despite community_area_24h outperform the always zero prediction.
-The worse performance of 24h may be due to the significant lower training size of the 
-24h datasets. We decided to have a closer look at the best performing model for census_tract_1h and the plots in @fig-nn-baseline-diagnostics
-show that the model has a particular weakness for predicting higher demand. 
+The selected configuration was also trained on the other spatial and temporal datasets. However, its settings were tuned only on Census Tracts at 1 hour resolution. The comparison in @fig-final-mae-skill-trivial-baselines therefore shows how well the configuration transfers. It does not compare separately optimized models for every dataset. Improvements through lagged demand and a two stage prediction approach are discussed in the outlook.
 
-- Show	 how	 you	 model’s	 performance	 varies	 as	 you	 increase	 or	 decrease	 temporal	 or	 spatial	
-resolution
+## NN compared to SVM
 
-@fig-nn-baseline-all-training-histories
+We compare both models on the same TEST observations. The NN performs better on most error metrics and has higher precision. The SVM achieves higher recall across all configurations. It detects more demand intervals, but it also produces more false demand signals. The NN is more conservative, although the SVM performs better on several metrics for H3 resolution 7 at 24 hours. The number of metric wins is reported in @tbl-final-nn-svm-metric-wins.
+The demand bucket comparison provides a more detailed view. For Census Tracts at 1 hour, the SVM has slightly lower MAE for intervals with 1 or 2 to 3 trips. The NN performs better from 4 trips onwards. Its advantage grows at high demand. These results are shown in @fig-final-census-tract-1h-demand-bucket-mae. The complete comparison across datasets is presented in @fig-final-nn-svm-pipeline-comparison.
+Both models usually improve on the always zero prediction. This is a weak benchmark because it does not support useful fleet operations. The stronger spatial × time × weekday baseline is only outperformed by the NN for Census Tracts at 1 hour. With the current data and features, the additional complexity of both model pipelines creates little operational value.
 
-Therefore we decided that the main focus for the next NN should be to distinguish between zero and real demand. A first step was to switch the 
-checkpoint-selection metric from MAE to Balanced MAE, where Balanced MAE is 0,5 * non-zero MAE + 0,5 * zero-MAE, thereby trying to ensure that 
-zero-demand is not entirely driving the training. The second step was to perform a grid search in two stages. The first stage was exploring
-two strategies of dealing with the problem of zero-demand: undersampling and weighted training. The search space contains for each stragety three settings, which are shown in @tbl-nn-grid-stage-one.
-In the first stage of the grid search the architecture was fixed to the architecture of the baseline and each model was trained for 20 epochs. We considered 20 epochs to be sufficient as it could be observed 
-in the trainings history of the baseline model for census_tract_1h that the loss slows down decreasing at around 7 to 12 epochs (see @fig-nn-baseline-training-history). The results of the first stage are
-shown in @tbl-nn-grid-performance. Notebly all models perform worse than the spatial x time x weekday baseline, as all models have a negative MAE skill score. But this may be due to the 
-limited trainings epochs as all runs have their best epoch very close to 20. Despite it is evidence that weighting is performing better than 
-undersampling. All three runs with weights have higher MAE skill scores than the ones with undersampling. Therefore weighted loss is selected as strategy and used in the second stage of the grid search,
-where we tested different model architectures and learning rates. In @tbl-nn-grid-stage-two the search space of the second stage is shown. The results of the second stage as shown in @tbl-nn-grid-performance
-show again mainly negative MAE skill scores and best epochs close to the maximum number of epochs. The model S2-7 with the hidden layers 128-64, learning rate of 0.001 and a weight of 5 for positive demand
-performed best with a score of 0.0014 and balanced MAE of 2.7877. The best balanced MAE was achieved in epoch 29 of 30 (see @fig-nn-grid-winner-history), which highlights that further training with more epochs may increase the performance.
+```{python}
+#| label: fig-final-mae-skill-trivial-baselines
+#| fig-cap: "Test MAE skill scores of NN and SVM models against both baselines."
+#| echo: false
+#| warning: false
+#| out-width: 80%
+#| fig-align: center
 
-The final model is therefore trained on the architecture and trainings configuration of the model S2-7 but with 100 epochs and a patience of 10. Despite giving a maximum of 100 epochs the best model was
-trained in epoch 26 (see @fig-final-census-tract-1h-training-history) with a balanced MAE of 2.8775 and spatial x time x weekday skill score of 0.0253. The final model is therefore slightly better than the baseline and the
-NN baseline. The final model has a zero-demand MAE of 0.0123 and a non-zero demand MAE of 5.7427. The large gap between these two MAE's shows that also for the final model the main difficulty is that zero-demand 
-dominates the training and the model struggles to predict higher demand. This is also evident from the fact that the peak-demand MAE is with 17.1399 much higher than the non-zero-demand MAE and that the recall with 0.7162 is lower than 
-the precision with 0.8123. The model struggles to predict real demand, but if it does so it is more certain. All the test-set performance metric are shown in @tbl-final-census-tract-1h-test-scores.
+from pathlib import Path
 
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
+import numpy as np
+import pandas as pd
 
+comparison_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
+)
+if not comparison_metrics_path.exists():
+    raise FileNotFoundError(
+        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
+    )
 
-The fact that the recall is lower than the precision also leads us to propose improvements for a follow-up project. We recommend that prior to the regression a classifier model should predict the probability of low or high demand.
-Further we recommend exploring separate regression models for low and high demand. The final prediction could then be an ensemble of the classification, low and high demand prediction, e. g.
-final prediction = p_high * high_model_pred + (1-p_high) * low_model_pred. A further lever may be to include lag-features like the demand in the last week or day. Then it would no longer be recommended to perform a random split of the train, validation
-and test data, but instead a chronological split should be used. It may also help to explore more features like an event calendar. 
+skill_metrics = pd.read_parquet(
+    comparison_metrics_path,
+    columns=[
+        "dataset",
+        "model",
+        "mae_skill_vs_zero",
+        "mae_skill_vs_spatial_time_weekday_mean",
+    ],
+)
+dataset_order = [
+    "census_tracts_1h",
+    "census_tracts_4h",
+    "census_tracts_24h",
+    "community_areas_1h",
+    "community_areas_4h",
+    "community_areas_24h",
+    "hexagon_h3r7_1h",
+    "hexagon_h3r7_4h",
+    "hexagon_h3r7_24h",
+]
+dataset_labels = {
+    "census_tracts_1h": "Census tracts · 1H",
+    "census_tracts_4h": "Census tracts · 4H",
+    "census_tracts_24h": "Census tracts · 24H",
+    "community_areas_1h": "Community areas · 1H",
+    "community_areas_4h": "Community areas · 4H",
+    "community_areas_24h": "Community areas · 24H",
+    "hexagon_h3r7_1h": "H3 resolution 7 · 1H",
+    "hexagon_h3r7_4h": "H3 resolution 7 · 4H",
+    "hexagon_h3r7_24h": "H3 resolution 7 · 24H",
+}
+expected_pairs = pd.MultiIndex.from_product(
+    [dataset_order, ["NN", "SVM"]],
+    names=["dataset", "model"],
+)
+actual_pairs = pd.MultiIndex.from_frame(
+    skill_metrics[["dataset", "model"]]
+)
+if (
+    len(expected_pairs.difference(actual_pairs))
+    or skill_metrics.duplicated(["dataset", "model"]).any()
+):
+    raise ValueError(
+        "Expected exactly one NN and one SVM row for every dataset."
+    )
 
-Despite the grid search was conducted only on the census_tract_1h dataset, we decided
-to train the final model S2-7 on all datasets. Of course the comparison of the final model performance between the dataset is therefore not completely fair.
+plot_specs = [
+    (
+        "mae_skill_vs_zero",
+        "MAE skill vs. zero-demand baseline",
+    ),
+    (
+        "mae_skill_vs_spatial_time_weekday_mean",
+        "MAE skill vs. spatial × time × weekday baseline",
+    ),
+]
+model_colors = {
+    "NN": "#1f77b4",
+    "SVM": "#ff7f0e",
+}
+dataset_positions = np.arange(len(dataset_order))
+bar_width = 0.38
 
-    - @fig-final-census-tract-test-mae
-    - @fig-final-mae-skill-trivial-baselines
+figure, axes = plt.subplots(
+    2,
+    1,
+    figsize=(13.5, 9.5),
+    sharex=True,
+    constrained_layout=True,
+)
+for axis, (metric, title) in zip(axes, plot_specs):
+    for offset, model in (
+        (-bar_width / 2, "NN"),
+        (bar_width / 2, "SVM"),
+    ):
+        values = (
+            skill_metrics.loc[
+                lambda frame: frame["model"].eq(model),
+                ["dataset", metric],
+            ]
+            .set_index("dataset")
+            .reindex(dataset_order)[metric]
+            .to_numpy()
+        )
+        axis.bar(
+            dataset_positions + offset,
+            values,
+            bar_width,
+            label=model,
+            color=model_colors[model],
+        )
 
-## Neural Network compared to SVM
+    axis.axhline(0, color="black", linewidth=1)
+    axis.set_title(title, loc="left")
+    axis.set_ylabel("MAE skill score")
+    axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+    axis.grid(axis="y", alpha=0.25)
+    axis.legend(frameon=False, ncols=2)
 
-This section provides a comparision of the performance of the developed NN and SVM. Further we argue, whether it is generally worthy to employ a machine-learning model.
+axes[-1].set_xticks(dataset_positions)
+axes[-1].set_xticklabels(
+    [dataset_labels[dataset] for dataset in dataset_order],
+    rotation=35,
+    ha="right",
+)
+figure.suptitle(
+    "MAE skill scores by model and dataset",
+    fontsize=15,
+)
+plt.show()
+```
 
-The comparision is performed on the test set, which was not used in the development phases for the model tuning and selection. In @tbl-final-nn-svm-metric-wins we show for different metric on
-how many spatial-time units the NN or the SVM performed better. Notably the NN performed better across all metrics and spatial-time units despite for recall the SVM is performing better. The
-SVM seems to detect demand better than the NN, but the NN wins in the metric precision. This indicated that the SVM is more offensive in predicting demand compared to the NN. We looked closer
-into the performance of SVM and NN for different demand buckets in @fig-final-census-tract-1h-demand-bucket-mae for the census_tract_1h dataset. It can be seen that the SVM is slightly performing 
-better for low demand (1 and 2-3 trips) and for higher demand the NN is making better predictions. Further @fig-final-nn-svm-pipeline-comparison shows the performance metrics on each dataset for NN and SVM.
-
-Finally we look compare the performance of both NN and SVM against the baseline in @fig-final-mae-skill-trivial-baselines. The zero-demand baseline is only for the census_tract_24h dataset not outperforned by the SVM. For all
-other datasets both NN and SVM are outperforming the zero-demand baseline. However, this is of course not really a success as the zero-demand baseline does not favor business operations. The spatial x time x weekday
-baseline is only outperformed by NN for the dataset census_tract_1h. Overall this show that our developed prediction models to not perform well against the baseline. Based on the current data and
-feature selection we would not recommend the development of machine-learning models. Their development and training is costly and the small performance improvement of only one model is not justifying 
-this costs. In this current setting of data and features the spatial x time x weekday prediction is recommended as this is very simple, understandle and delivers good enough performance.
-
-However, this does not mean that the development of machine-learning models is generally not recommended for our customer. Further this does not mean that NN are performing generally better than SVM, but
-only in our analysis the NN pipeline performs better than the SVM pipelin. Developing a model with lag-features, event data and using an ensemble of models may 
-significantly outperform the provided baselines. Our final recommendation is therefore to conduct a follow-up project developing exactly such a model.
+For the pilot, we therefore recommend the spatial × time × weekday baseline. It is simple, transparent and inexpensive to maintain. The current NN and SVM pipelines should not be used as the only basis for fleet dispatch. This result does not show that NNs are generally better than SVMs. It only applies to the pipelines and data evaluated in this report. A follow up project with additional information and a model designed for different demand levels may provide more value.

@@ -66,6 +66,21 @@ deviation of 0.162 km and a 95% ellipse area of 1.085 km².
 
 ## Neural-Network Details
 
+| Role / feature group | Variable(s) | Preprocessing |
+|---|---|---|
+| Target | `trip_count` | Converted to `float32`; not scaled |
+| Spatial unit | `census_tract`, `h3_cell` or `community_area` | TRAIN-only categorical index; unseen units map to index 0 |
+| Cyclical time | `month_sin`, `month_cos`, `weekday_sin`, `weekday_cos`, `hour_sin`, `hour_cos` | Cyclically encoded, then standardized |
+| Calendar | `is_holiday` | Binary indicator, then standardized |
+| Points of interest | `food_drink`, `landmark`, `shop`, `train_station` | Counts per spatial unit, then standardized |
+| Weather measurements | `tmpc`, `relh`, `sknt`, `p01m`, `vsby`, `wind_dir_sin`, `wind_dir_cos` | Quality-controlled and imputed before TRAIN-only standardization |
+| Weather conditions | `weather_rain`, `weather_snow`, `weather_fog_mist`, `weather_thunder`, `weather_freezing`, `precipitation_trace` | Binary indicators, then standardized |
+| Cloud cover | `skyc1_CLR`, `skyc1_FEW`, `skyc1_SCT`, `skyc1_BKN`, `skyc1_OVC`, `skyc1_VV` | One-hot indicators, then standardized |
+| Weather-station context | `weather_station_distance_km`, `weather_station_MDW`, `weather_station_ORD`, `weather_station_IGQ` | Distance and one-hot station indicators, then standardized |
+| H3 metadata | `h3_resolution` | Included only for H3 datasets, then standardized |
+
+: Target, features and preprocessing for NN training. {#tbl-nn-target-features}
+
 | Component | Input dimension | Output dimension | Activation |
 |---|---:|---:|---|
 | Numeric input | $n_{\text{features}}$ | $n_{\text{features}}$ | -- |
@@ -76,7 +91,7 @@ deviation of 0.162 km and a 95% ellipse area of 1.085 km².
 | Combination | Numeric score + spatial bias | 1 | Addition |
 | Final output | 1 | 1 | Softplus |
 
-: Architecture of the neural-network baseline {#tbl-nn-baseline-architecture}
+: NN baseline architecture. {#tbl-nn-baseline-architecture}
 
 The spatial bias is implemented as a one-dimensional embedding. It represents an
 additive spatial intercept rather than a multidimensional representation-learning
@@ -107,7 +122,7 @@ split and has no learned effect.
 | Model development split | TRAIN for fitting and VAL for model selection |
 | Final evaluation split | TEST remains unused during model development |
 
-: Training configuration of the neural-network baseline {#tbl-nn-baseline-training}
+: NN baseline training configuration. {#tbl-nn-baseline-training}
 
 ## Neural-network baseline validation results {#sec-nn-baseline-results}
 
@@ -123,10 +138,10 @@ split and has no learned effect.
 | Census Tracts, 24h | 3.3413 | 2.2846 | -0.4625 |
 | Community Areas, 24h | 100.9842 | 23.6039 | -3.2783 |
 
-: Validation results of the neural-network baseline models. {#tbl-nn-baseline-results}
+: NN baseline validation results. {#tbl-nn-baseline-results}
 ```{python}
 #| label: tbl-nn-baseline-results
-#| tbl-cap: "Validation results of the neural-network baseline models"
+#| tbl-cap: "NN baseline validation results."
 #| echo: false
 #| warning: false
 
@@ -189,7 +204,7 @@ baseline_results
 
 ```{python}
 #| label: tbl-trivial-baseline-test-mae
-#| tbl-cap: "Test MAE of the zero and spatial × time × weekday baselines for the filtered datasets"
+#| tbl-cap: "Test MAE of both baselines by dataset."
 #| echo: false
 #| warning: false
 
@@ -423,7 +438,7 @@ baseline_bucket_metrics = (
 
 ```{python}
 #| label: fig-nn-baseline-diagnostics
-#| fig-cap: "Validation diagnostics of the census-tract 1h neural-network baseline: actual versus predicted demand (left), and MAE and average actual demand by demand bucket (right)"
+#| fig-cap: "Validation diagnostics for the Census Tracts 1h NN baseline."
 #| echo: false
 #| warning: false
 
@@ -502,181 +517,11 @@ bucket_axis.legend()
 plt.show()
 ```
 
-```{python}
-#| label: fig-nn-baseline-training-history
-#| fig-cap: "Training history of the census-tract 1h neural-network baseline. The dashed line marks the 20-epoch budget considered for the subsequent grid search."
-#| echo: false
-#| warning: false
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import polars as pl
-
-baseline_history_path = Path(
-    "results/appendix/"
-    "baseline_NN_spatial_bias_v1_"
-    "census_tracts_1h_training_history.parquet"
-)
-if not baseline_history_path.exists():
-    raise FileNotFoundError(
-        f"Missing baseline training history: {baseline_history_path}. "
-        "Run the NN-baseline notebook before rendering the report."
-    )
-
-baseline_history = pl.read_parquet(baseline_history_path).sort("epoch")
-epoch_budget = 20
-best_baseline_epoch = (
-    baseline_history.sort("val_mae").row(0, named=True)
-)
-
-figure, axes = plt.subplots(
-    1,
-    2,
-    figsize=(11.5, 4.3),
-    constrained_layout=True,
-)
-axes[0].plot(
-    baseline_history["epoch"],
-    baseline_history["train_loss"],
-    label="Train MSE",
-)
-axes[0].plot(
-    baseline_history["epoch"],
-    baseline_history["val_loss"],
-    label="Validation MSE",
-)
-axes[0].set(
-    title="Loss history – census_tracts_1h",
-    xlabel="Epoch",
-    ylabel="MSE",
-)
-
-axes[1].plot(
-    baseline_history["epoch"],
-    baseline_history["val_mae"],
-    label="Validation MAE",
-)
-axes[1].scatter(
-    [best_baseline_epoch["epoch"]],
-    [best_baseline_epoch["val_mae"]],
-    color="black",
-    zorder=3,
-    label="Best baseline epoch",
-)
-axes[1].set(
-    title="Validation MAE – census_tracts_1h",
-    xlabel="Epoch",
-    ylabel="MAE",
-)
-
-for axis in axes:
-    axis.axvline(
-        epoch_budget,
-        color="tab:red",
-        linestyle="--",
-        label="20-epoch grid-search budget",
-    )
-    axis.grid(alpha=0.25)
-    axis.legend()
-
-plt.show()
-```
-
-```{python}
-#| label: fig-nn-baseline-all-training-histories
-#| fig-cap: "Validation-MAE histories of all nine neural-network baseline models. Columns represent the temporal aggregation and rows the spatial unit; black markers identify the selected checkpoint epochs."
-#| echo: false
-#| warning: false
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import polars as pl
-
-baseline_history_directory = Path("results/appendix")
-spatial_history_rows = [
-    ("H3 resolution 7", "hexagon_h3r7"),
-    ("Census tracts", "census_tracts"),
-    ("Community areas", "community_areas"),
-]
-time_history_columns = ["1h", "4h", "24h"]
-
-figure, axes = plt.subplots(
-    3,
-    3,
-    figsize=(12, 8.8),
-    sharex=True,
-    constrained_layout=True,
-)
-
-for row_index, (spatial_label, model_prefix) in enumerate(
-    spatial_history_rows
-):
-    for column_index, time_unit in enumerate(time_history_columns):
-        model_tag = f"{model_prefix}_{time_unit}"
-        history_path = (
-            baseline_history_directory
-            / (
-                "baseline_NN_spatial_bias_v1_"
-                f"{model_tag}_training_history.parquet"
-            )
-        )
-        if not history_path.exists():
-            raise FileNotFoundError(
-                f"Missing baseline training history: {history_path}"
-            )
-
-        model_history = pl.read_parquet(history_path).sort("epoch")
-        best_history_epoch = (
-            model_history.sort("val_mae").row(0, named=True)
-        )
-        axis = axes[row_index, column_index]
-        axis.plot(
-            model_history["epoch"],
-            model_history["val_mae"],
-            color="tab:blue",
-            label="Validation MAE",
-        )
-        axis.scatter(
-            best_history_epoch["epoch"],
-            best_history_epoch["val_mae"],
-            color="black",
-            s=24,
-            zorder=3,
-        )
-        label_on_left = (
-            best_history_epoch["epoch"]
-            >= 0.8 * model_history["epoch"].max()
-        )
-        axis.annotate(
-            f"Epoch {int(best_history_epoch['epoch'])}",
-            (
-                best_history_epoch["epoch"],
-                best_history_epoch["val_mae"],
-            ),
-            xytext=(-5 if label_on_left else 5, 6),
-            textcoords="offset points",
-            fontsize=8,
-            horizontalalignment="right" if label_on_left else "left",
-        )
-        axis.grid(alpha=0.25)
-
-        if row_index == 0:
-            axis.set_title(time_unit)
-        if column_index == 0:
-            axis.set_ylabel(f"{spatial_label}\nValidation MAE")
-        if row_index == len(spatial_history_rows) - 1:
-            axis.set_xlabel("Epoch")
-
-plt.show()
-```
-
 ## Final census-tract 1h test scores {#sec-final-census-tract-test-scores}
 
 ```{python}
 #| label: tbl-final-census-tract-1h-test-scores
-#| tbl-cap: "Test-set performance of the final census-tract 1h neural network"
+#| tbl-cap: "Final Census Tracts 1h NN test performance."
 #| echo: false
 #| warning: false
 
@@ -758,82 +603,11 @@ rows = [
 display(Markdown("\n".join([header, separator, *rows])))
 ```
 
-```{python}
-#| label: fig-final-census-tract-1h-training-history
-#| fig-cap: "Training loss and validation Balanced MAE of the final census-tract 1h neural network. The selected checkpoint is marked in the validation history."
-#| echo: false
-#| warning: false
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-import pandas as pd
-
-final_census_history_path = Path(
-    "results/appendix/"
-    "final_nn_v1_census_tracts_1h_training_history.parquet"
-)
-if not final_census_history_path.exists():
-    raise FileNotFoundError(
-        f"Missing final training history: {final_census_history_path}. "
-        "Run the final NN notebook before rendering the report."
-    )
-
-final_census_history = pd.read_parquet(
-    final_census_history_path,
-    columns=["epoch", "train_loss", "val_balanced_mae"],
-).sort_values("epoch")
-best_final_history_row = final_census_history.loc[
-    final_census_history["val_balanced_mae"].idxmin()
-]
-
-figure, axes = plt.subplots(
-    1,
-    2,
-    figsize=(11.5, 4.3),
-    constrained_layout=True,
-)
-axes[0].plot(
-    final_census_history["epoch"],
-    final_census_history["train_loss"],
-    color="tab:blue",
-)
-axes[0].set(
-    title="Training loss – census_tracts_1h",
-    xlabel="Epoch",
-    ylabel="Weighted MSE",
-)
-
-axes[1].plot(
-    final_census_history["epoch"],
-    final_census_history["val_balanced_mae"],
-    color="tab:orange",
-)
-axes[1].scatter(
-    best_final_history_row["epoch"],
-    best_final_history_row["val_balanced_mae"],
-    color="black",
-    zorder=3,
-    label=f"Best epoch ({int(best_final_history_row['epoch'])})",
-)
-axes[1].set(
-    title="Validation Balanced MAE – census_tracts_1h",
-    xlabel="Epoch",
-    ylabel="Balanced MAE",
-)
-axes[1].legend()
-
-for axis in axes:
-    axis.grid(alpha=0.25)
-
-plt.show()
-```
-
 ## Final model test MAE by spatial unit {#sec-final-spatial-unit-test-mae}
 
 ```{python}
 #| label: fig-final-census-tract-test-mae
-#| fig-cap: "Test MAE of the final 1h models by spatial unit. All panels use the same nonlinear color scale and value range; the color-bar values remain MAE in trips per hour."
+#| fig-cap: "Test MAE of final 1h NN models by spatial unit."
 #| echo: false
 #| warning: false
 
@@ -1015,142 +789,6 @@ figure.colorbar(
 plt.show()
 ```
 
-## Final NN and SVM skill scores against baselines {#sec-final-skill-baselines}
-
-```{python}
-#| label: fig-final-mae-skill-trivial-baselines
-#| fig-cap: "Test MAE Skill Scores of the final NN and SVM pipelines against the zero-demand and spatial × time × weekday baselines. Scores are calculated on the complete test set. Positive values indicate a lower MAE than the respective baseline."
-#| echo: false
-#| warning: false
-
-from pathlib import Path
-
-import matplotlib.pyplot as plt
-from matplotlib.ticker import PercentFormatter
-import numpy as np
-import pandas as pd
-
-comparison_metrics_path = Path(
-    "results/appendix/svm_nn_model_metrics.parquet"
-)
-if not comparison_metrics_path.exists():
-    raise FileNotFoundError(
-        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
-        "Run the NN-SVM comparison notebook before rendering the report."
-    )
-
-skill_metrics = pd.read_parquet(
-    comparison_metrics_path,
-    columns=[
-        "dataset",
-        "model",
-        "mae_skill_vs_zero",
-        "mae_skill_vs_spatial_time_weekday_mean",
-    ],
-)
-dataset_order = [
-    "census_tracts_1h",
-    "census_tracts_4h",
-    "census_tracts_24h",
-    "community_areas_1h",
-    "community_areas_4h",
-    "community_areas_24h",
-    "hexagon_h3r7_1h",
-    "hexagon_h3r7_4h",
-    "hexagon_h3r7_24h",
-]
-dataset_labels = {
-    "census_tracts_1h": "Census tracts · 1H",
-    "census_tracts_4h": "Census tracts · 4H",
-    "census_tracts_24h": "Census tracts · 24H",
-    "community_areas_1h": "Community areas · 1H",
-    "community_areas_4h": "Community areas · 4H",
-    "community_areas_24h": "Community areas · 24H",
-    "hexagon_h3r7_1h": "H3 resolution 7 · 1H",
-    "hexagon_h3r7_4h": "H3 resolution 7 · 4H",
-    "hexagon_h3r7_24h": "H3 resolution 7 · 24H",
-}
-expected_pairs = pd.MultiIndex.from_product(
-    [dataset_order, ["NN", "SVM"]],
-    names=["dataset", "model"],
-)
-actual_pairs = pd.MultiIndex.from_frame(
-    skill_metrics[["dataset", "model"]]
-)
-if (
-    len(expected_pairs.difference(actual_pairs))
-    or skill_metrics.duplicated(["dataset", "model"]).any()
-):
-    raise ValueError(
-        "Expected exactly one NN and one SVM row for every dataset."
-    )
-
-plot_specs = [
-    (
-        "mae_skill_vs_zero",
-        "MAE skill vs. zero-demand baseline",
-    ),
-    (
-        "mae_skill_vs_spatial_time_weekday_mean",
-        "MAE skill vs. spatial × time × weekday baseline",
-    ),
-]
-model_colors = {
-    "NN": "#1f77b4",
-    "SVM": "#ff7f0e",
-}
-dataset_positions = np.arange(len(dataset_order))
-bar_width = 0.38
-
-figure, axes = plt.subplots(
-    2,
-    1,
-    figsize=(13.5, 9.5),
-    sharex=True,
-    constrained_layout=True,
-)
-for axis, (metric, title) in zip(axes, plot_specs):
-    for offset, model in (
-        (-bar_width / 2, "NN"),
-        (bar_width / 2, "SVM"),
-    ):
-        values = (
-            skill_metrics.loc[
-                lambda frame: frame["model"].eq(model),
-                ["dataset", metric],
-            ]
-            .set_index("dataset")
-            .reindex(dataset_order)[metric]
-            .to_numpy()
-        )
-        axis.bar(
-            dataset_positions + offset,
-            values,
-            bar_width,
-            label=model,
-            color=model_colors[model],
-        )
-
-    axis.axhline(0, color="black", linewidth=1)
-    axis.set_title(title, loc="left")
-    axis.set_ylabel("MAE skill score")
-    axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
-    axis.grid(axis="y", alpha=0.25)
-    axis.legend(frameon=False, ncols=2)
-
-axes[-1].set_xticks(dataset_positions)
-axes[-1].set_xticklabels(
-    [dataset_labels[dataset] for dataset in dataset_order],
-    rotation=35,
-    ha="right",
-)
-figure.suptitle(
-    "MAE skill scores by model and dataset",
-    fontsize=15,
-)
-plt.show()
-```
-
 ## Final NN and SVM pipeline comparison {#sec-final-nn-svm-comparison}
 
 ```{python}
@@ -1255,7 +893,7 @@ def ordered_metric_values(metric, model):
 
 ```{python}
 #| label: fig-final-nn-svm-pipeline-comparison
-#| fig-cap: "High-level test-set comparison of the final neural-network and SVM pipelines. Both models are evaluated against the same canonical targets for each dataset. Demand precision and recall use a prediction threshold of 0.5 trips."
+#| fig-cap: "TEST comparison of the final NN and SVM pipelines."
 #| echo: false
 #| warning: false
 
@@ -1311,7 +949,7 @@ plt.show()
 
 ```{python}
 #| label: fig-final-census-tract-1h-demand-bucket-mae
-#| fig-cap: "Test MAE of the final NN and SVM pipelines by actual-demand bucket for the census-tract 1h dataset. The mean actual demand in each bucket is included as a reference. Values above the bars are given in trips per hour."
+#| fig-cap: "NN and SVM test MAE by demand bucket for Census Tracts 1h."
 #| echo: false
 #| warning: false
 
@@ -1447,7 +1085,7 @@ plt.show()
 
 ```{python}
 #| label: tbl-final-nn-svm-metric-wins
-#| tbl-cap: "Number of datasets won by the final NN and SVM pipelines for each test metric. Error metrics are won by the lower value; R², demand precision, demand recall, and MAE Skill Scores are won by the higher value."
+#| tbl-cap: "Test metric wins by model across all datasets."
 #| echo: false
 #| warning: false
 
@@ -1524,7 +1162,7 @@ display(Markdown("\n".join([header, separator, *rows])))
 
 ```{python}
 #| label: tbl-nn-grid-stage-one
-#| tbl-cap: "Models evaluated in Stage 1 of the neural-network grid search"
+#| tbl-cap: "NN grid search models in stage 1."
 #| echo: false
 #| warning: false
 
@@ -1601,7 +1239,7 @@ display_without_index(stage_one_results)
 
 ```{python}
 #| label: tbl-nn-grid-stage-two
-#| tbl-cap: "Models evaluated in Stage 2 of the neural-network grid search"
+#| tbl-cap: "NN grid search models in stage 2."
 #| echo: false
 #| warning: false
 
@@ -1654,7 +1292,7 @@ display_without_index(stage_two_results)
 
 ```{python}
 #| label: tbl-nn-grid-performance
-#| tbl-cap: "Validation performance of all Stage-1 and Stage-2 grid-search models"
+#| tbl-cap: "Validation results for all NN grid search models."
 #| echo: false
 #| warning: false
 
@@ -1715,7 +1353,7 @@ display_without_index(grid_search_performance)
 
 ```{python}
 #| label: fig-nn-grid-winner-history
-#| fig-cap: "Training loss and validation Balanced MAE of the selected Stage-2 grid-search model"
+#| fig-cap: "Training history of the selected NN grid search model."
 #| echo: false
 #| warning: false
 
