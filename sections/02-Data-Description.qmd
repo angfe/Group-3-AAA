@@ -3,12 +3,15 @@
 ## Data Sources and Scope
 
 The analysis combines Chicago taxi trips from 1 January 2024 to 30 April 2026
-with spatial boundaries, weather, calendar information and points of interest.
+with spatial boundaries, weather, calendar information and points of interest
+[@chicagoTaxiTrips2024; @chicagoCommunityAreas; @chicagoCensusTracts].
 The predictive models use the more recent period from 1 January 2025 onwards.
 Hourly weather observations come from Midway, O'Hare and Lansing Municipal
-Airport, and each spatial unit is linked to its nearest station. OpenStreetMap
-features are grouped into food and drink venues, train stations, shops and
-landmarks. Illinois public holidays complete the temporal context.
+Airport, and each spatial unit is linked to its nearest station
+[@iowaMesonetASOS]. OpenStreetMap features are obtained through OSMnx and
+grouped into food and drink venues, train stations, shops and landmarks
+[@openStreetMapContributors; @boeing2017osmnx]. Illinois public holidays
+complete the temporal context [@pythonHolidays].
 
 | Source | Provider | Coverage | Role |
 | --- | --- | --- | --- |
@@ -31,7 +34,8 @@ known after a trip has started.
 
 We compare 77 Community Areas, 878 canonical Census Tracts, 163 H3 resolution-7
 cells and 976 H3 resolution-8 cells at 1-hour, 4-hour and 24-hour intervals
-(@tbl-spatial-representations). General descriptive results use all 13,386,706
+[@uberH3] (@tbl-spatial-representations). General descriptive results use all
+13,386,706
 cleaned trips with a valid pickup Community Area. Cross-resolution comparisons
 and the GMM use a common subset of 6,049,435 trips that can also be assigned to a
 canonical Census Tract. This common population ensures that differences between
@@ -44,4 +48,4 @@ distributed across Chicago, so the filtered population may have different local
 demand shares. Timestamps are rounded to 15-minute intervals, taxi IDs are
 anonymized, and routes and driver shifts are unavailable. These restrictions
 limit street-level conclusions and make inter-trip gaps only an approximation of
-idle time.
+idle time [@chicagoTaxiTrips2024].

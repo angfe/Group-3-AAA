@@ -49,7 +49,8 @@ poor performance in the locations where capacity matters most.
 ## GMM Hot-Spot Analysis
 
 The Community Area map ranks fixed administrative units. To obtain a continuous
-demand surface, we fit Gaussian Mixture Models to projected pickup coordinates.
+demand surface, we fit Gaussian Mixture Models to projected pickup coordinates
+with scikit-learn [@pedregosa2011scikit; @scikitLearnGaussianMixture].
 The fit uses the 6,049,435 trips with Census-based centroids; Community Area
 centroids are excluded because millions of observations repeated at only 77
 coarse points would produce artificial peaks. No area label or trip attribute
@@ -57,12 +58,13 @@ enters the model.
 
 Model selection uses a fixed 250,000-trip reservoir sample whose coordinate
 shares correlate at 0.999967 with the eligible population. We compare 116
-candidates covering 2 to 30 components and four covariance structures. The raw
-BIC winner collapses narrow components onto repeated centroids, so candidates
-must also converge, have at least 0.25% component weight and maintain a minimum
-standard deviation of 50 metres. These safeguards select tied covariance with
-17 components; full diagnostics are shown in @fig-gmm-selection in the
-appendix.
+candidates covering 2 to 30 components and four covariance structures. The
+Bayesian Information Criterion is used for the initial ranking
+[@schwarz1978estimating]. The raw BIC winner collapses narrow components onto
+repeated centroids, so candidates must also converge, have at least 0.25%
+component weight and maintain a minimum standard deviation of 50 metres. These
+safeguards select tied covariance with 17 components; full diagnostics are
+shown in @fig-gmm-selection in the appendix.
 
 The selected GMM confirms the Community Area ranking but adds detail within the
 largest districts (@fig-gmm-community-comparison). O'Hare forms the largest

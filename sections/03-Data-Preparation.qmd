@@ -16,7 +16,8 @@ and hour and converted into temperature, precipitation, wind and condition
 features. Remaining gaps are interpolated within a station. Spatial geometries
 are repaired, and points of interest are counted for each spatial system. Since
 source Census IDs and the selected boundaries can refer to different vintages,
-unique pickup centroids are spatially joined to the canonical Census polygons.
+unique pickup centroids are spatially joined to the canonical Census polygons
+[@chicagoCensusTracts].
 Trips without a valid reconstructed assignment remain available for the
 citywide Community Area description but are excluded from the common
 cross-resolution population.
