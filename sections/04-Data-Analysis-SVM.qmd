@@ -6,7 +6,7 @@ Tracts [@chicagoCensusTracts] and H3 hexagons [@uberH3] at one-, four- and
 twenty-four-hour resolutions. The models use the previously described
 temporal, weather [@iowaMesonetASOS], holiday and point-of-interest features. To
 provide one spatial representation across all three unit types, unit centroids
-are converted from longitude and latitude to spherical coordinates. The final scikit-learn pipeline [@sklearn_api] scales inputs and the target,
+are converted from longitude and latitude to spherical coordinates. The final scikit-learn pipeline [@sklearn_api; @pedregosa2011scikit] scales inputs and the target,
 compares linear SVR with kernel approximations and uses successive-halving model
 selection. Kernel approximation, caching and restricted search spaces make the
 large data sets computationally tractable. GPU training with cuML

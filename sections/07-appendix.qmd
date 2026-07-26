@@ -1434,7 +1434,7 @@ plt.show()
 ## Appendix SVM
 
 ### Bug found in cuml
-Cuml appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time. This seems to happen at with datasets greater than 100_000. Other similar bugs seem to have been found before.
+Cuml[@rapids_cuml] appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time. This seems to happen at with datasets greater than 100_000. Other similar bugs seem to have been found before.
 
 ### Steps in developing SVM
 
@@ -1444,7 +1444,7 @@ These are the changes we made during the developement of the svm in steps and wh
 - SVM work better on scaled data, therefore we added a StandardScaler[@sklearn_api; @pedregosa2011scikit].
 - Since we were running into runtime issues we changed changed grid search to only include the hyperparameter relevant for each kernel.
 - To further counteract these issues we added Nystroem[@sklearn_api; @pedregosa2011scikit].
-- Due to the same reason, we changed GridSearchCV[@sklearn_api; @pedregosa2011scikit] to RandomSearchCV.
+- Due to the same reason, we changed GridSearchCV to RandomSearchCV[@sklearn_api; @pedregosa2011scikit].
 - Since we were using a pipeline now we also added the StandardScaler to the Pipeline[@sklearn_api; @pedregosa2011scikit].
 - Since we were still runnig into issues withe the runtime and to get a better performing SVR we added TransformedTargetRegressor[@sklearn_api; @pedregosa2011scikit].
 - For the same reason as before we added cashing(memory) to the pipeline.
