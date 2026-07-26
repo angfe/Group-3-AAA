@@ -1,16 +1,1 @@
-SVM
 
-
-\section{Spatial Encoding}
-
-
-
-\section{SVR}
-
-
-
-\section{SVC}
-
-
-
-\section{Comparison}

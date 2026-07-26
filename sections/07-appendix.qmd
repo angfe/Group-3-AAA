@@ -1431,12 +1431,12 @@ figure.tight_layout()
 plt.show()
 ```
 
-### Appendix SVM
+## Appendix SVM
 
-#### Bug found in cuml
+### Bug found in cuml
 Cuml appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time. This seems to happen at with datasets greater than 100_000. Other similar bugs seem to have been found before.
 
-#### Steps in developing SVM
+### Steps in developing SVM
 
 These are the changes we made during the developement of the svm in steps and why we decided on them:
 - We started with a basic svr on an rbf kernel which is the basic kernel for scikits[@sklearn_api; @pedregosa2011scikit] implementation of svms.
@@ -1454,14 +1454,14 @@ These are the changes we made during the developement of the svm in steps and wh
 - Changed from RandomSearchCV to HalvingGridSearchCV. Used RandomSearchCV before since HalvingGridSearchCV is still experimental. For our data HalvingGridSearchCV seems to work better[@sklearn_api; @pedregosa2011scikit].
 
 
-#### Pipeline SVR/SVC
+### Pipeline SVR/SVC
 - TransformedTargetRegressor (not part of SVC)
 - StandardScaler
 - Nystroem
 - SVR
 - TransformedTargetRegressors StandardScaler
 
-#### Current Result SVC
+### Current Result SVC
 
 ![Statistics of SVC](./report_assets/figures/appendix/svc_hexa.png){#fig-heatmap width=80%}
 
