@@ -66,8 +66,9 @@ The project supports two run modes, configured in `run_config.py`:
 ├── 03_01_predictive_analytics_baseline.ipynb
 ├── 03_02_*.ipynb                           # Train/validation/test split
 ├── 03_03_*_svm_*.ipynb                     # SVR models (community area & census tract)
-├── 03_04_*_svm_comparison.ipynb            # SVM model comparison across resolutions
-├── 03_05_*_nn_*.ipynb                      # Feedforward neural network models
+├── 03_04_*_svm_classification_*.ipynb      # SVM classification and report generation
+├── 03_05_*_svm_comparison.ipynb            # SVM model comparison across resolutions
+├── 03_06_*_svm_nn.ipynb                    # Final NN vs. SVM comparison
 ├── 04_01_smart_charging_reinforcement_learning.ipynb  # RL-based EV smart charging
 ├── 05_*.ipynb                              # Discussion & outlook
 ├── run_config.py                           # Central configuration (paths, dates, run modes)

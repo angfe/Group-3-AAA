@@ -16,17 +16,14 @@ larger demand share.
 
 ![Temporal pickup-demand patterns.](report_assets/figures/main/descriptive_temporal_patterns.png){#fig-descriptive-temporal width=92%}
 
-Near North Side, O'Hare, Loop and Near West Side dominate pickup demand
-(@fig-descriptive-community-demand). The five leading Community Areas account
-for 74.66% of mapped pickups and the leading ten for 86.10%. O'Hare records
-about 5.36 pickups for every published drop-off. The central pattern is
-consistent with employment, tourism and nightlife, while O'Hare represents a
-separate airport market. The pickup/drop-off ratio remains approximate because
-drop-off locations are less complete.
-
-![Pickup and drop-off demand by Community Area.](report_assets/figures/main/descriptive_community_demand.png){#fig-descriptive-community-demand width=82%}
-
-Resolution strongly affects target sparsity. Among Community Area-hour
+Near North Side, O'Hare, Loop and Near West Side dominate pickup demand. The
+five leading Community Areas account for 74.66% of mapped pickups and the
+leading ten for 86.10%; the full pickup/drop-off comparison is shown in
+@fig-descriptive-community-demand in the Appendix. O'Hare records about 5.36
+pickups for every published drop-off. The central pattern is consistent with
+employment, tourism and nightlife, while O'Hare represents a separate airport
+market. The pickup/drop-off ratio remains approximate because drop-off
+locations are less complete. Resolution strongly affects target sparsity. Among Community Area-hour
 combinations, 91.58% have zero demand; the shares are 98.03% for Census Tracts
 and 98.52% for H3 resolution 8. Daily aggregation reduces these values to
 76.76%, 93.42% and 95.07%, respectively; the full comparison is shown in

@@ -9,7 +9,7 @@
 # Set the run mode below to "sample" or "full"
 # Sample uses a 14-day window with rougly 300,000 rows
 # Full uses a two and a half year window with roughly 15 mio. rows
-RUN_MODE = "full"
+RUN_MODE = "sample"
 
 # Set App Token for Chicago Data (see notebook 00_01_data_loader.ipynb)
 APP_TOKEN = "***"
