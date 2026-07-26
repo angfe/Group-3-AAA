@@ -55,3 +55,148 @@ screened on representative samples before full fitting so that computationally
 infeasible candidates are rejected early. Given the observed convergence,
 runtime and predictive performance, SVMs are not recommended as the primary
 model family for this demand data.
+
+## NN compared to SVM
+
+We compare both models on the same TEST observations. The NN performs better on most error metrics and has higher precision. The SVM achieves higher recall across all configurations. It detects more demand intervals, but it also produces more false demand signals. The NN is more conservative, although the SVM performs better on several metrics for H3 resolution 7 at 24 hours. The number of metric wins is reported in @tbl-final-nn-svm-metric-wins.
+The demand bucket comparison provides a more detailed view. For Census Tracts at 1 hour, the SVM has slightly lower MAE for intervals with 1 or 2 to 3 trips. The NN performs better from 4 trips onwards. Its advantage grows at high demand. These results are shown in @fig-final-census-tract-1h-demand-bucket-mae. The complete comparison across datasets is presented in @fig-final-nn-svm-pipeline-comparison.
+Both models usually improve on the always zero prediction. This is a weak benchmark because it does not support useful fleet operations. The stronger spatial × time × weekday baseline is only outperformed by the NN for Census Tracts at 1 hour. With the current data and features, the additional complexity of both model pipelines creates little operational value.
+
+```{python}
+#| label: fig-final-mae-skill-trivial-baselines
+#| fig-cap: "Test MAE skill scores of NN and SVM models against both baselines."
+#| echo: false
+#| warning: false
+#| out-width: 80%
+#| fig-align: center
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
+import numpy as np
+import pandas as pd
+
+comparison_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
+)
+if not comparison_metrics_path.exists():
+    raise FileNotFoundError(
+        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
+    )
+
+skill_metrics = pd.read_parquet(
+    comparison_metrics_path,
+    columns=[
+        "dataset",
+        "model",
+        "mae_skill_vs_zero",
+        "mae_skill_vs_spatial_time_weekday_mean",
+    ],
+)
+dataset_order = [
+    "census_tracts_1h",
+    "census_tracts_4h",
+    "census_tracts_24h",
+    "community_areas_1h",
+    "community_areas_4h",
+    "community_areas_24h",
+    "hexagon_h3r7_1h",
+    "hexagon_h3r7_4h",
+    "hexagon_h3r7_24h",
+]
+dataset_labels = {
+    "census_tracts_1h": "Census tracts · 1H",
+    "census_tracts_4h": "Census tracts · 4H",
+    "census_tracts_24h": "Census tracts · 24H",
+    "community_areas_1h": "Community areas · 1H",
+    "community_areas_4h": "Community areas · 4H",
+    "community_areas_24h": "Community areas · 24H",
+    "hexagon_h3r7_1h": "H3 resolution 7 · 1H",
+    "hexagon_h3r7_4h": "H3 resolution 7 · 4H",
+    "hexagon_h3r7_24h": "H3 resolution 7 · 24H",
+}
+expected_pairs = pd.MultiIndex.from_product(
+    [dataset_order, ["NN", "SVM"]],
+    names=["dataset", "model"],
+)
+actual_pairs = pd.MultiIndex.from_frame(
+    skill_metrics[["dataset", "model"]]
+)
+if (
+    len(expected_pairs.difference(actual_pairs))
+    or skill_metrics.duplicated(["dataset", "model"]).any()
+):
+    raise ValueError(
+        "Expected exactly one NN and one SVM row for every dataset."
+    )
+
+plot_specs = [
+    (
+        "mae_skill_vs_zero",
+        "MAE skill vs. zero-demand baseline",
+    ),
+    (
+        "mae_skill_vs_spatial_time_weekday_mean",
+        "MAE skill vs. spatial × time × weekday baseline",
+    ),
+]
+model_colors = {
+    "NN": "#1f77b4",
+    "SVM": "#ff7f0e",
+}
+dataset_positions = np.arange(len(dataset_order))
+bar_width = 0.38
+
+figure, axes = plt.subplots(
+    2,
+    1,
+    figsize=(13.5, 9.5),
+    sharex=True,
+    constrained_layout=True,
+)
+for axis, (metric, title) in zip(axes, plot_specs):
+    for offset, model in (
+        (-bar_width / 2, "NN"),
+        (bar_width / 2, "SVM"),
+    ):
+        values = (
+            skill_metrics.loc[
+                lambda frame: frame["model"].eq(model),
+                ["dataset", metric],
+            ]
+            .set_index("dataset")
+            .reindex(dataset_order)[metric]
+            .to_numpy()
+        )
+        axis.bar(
+            dataset_positions + offset,
+            values,
+            bar_width,
+            label=model,
+            color=model_colors[model],
+        )
+
+    axis.axhline(0, color="black", linewidth=1)
+    axis.set_title(title, loc="left")
+    axis.set_ylabel("MAE skill score")
+    axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+    axis.grid(axis="y", alpha=0.25)
+    axis.legend(frameon=False, ncols=2)
+
+axes[-1].set_xticks(dataset_positions)
+axes[-1].set_xticklabels(
+    [dataset_labels[dataset] for dataset in dataset_order],
+    rotation=35,
+    ha="right",
+)
+figure.suptitle(
+    "MAE skill scores by model and dataset",
+    fontsize=15,
+)
+plt.show()
+```
+
+For the pilot, we therefore recommend the spatial × time × weekday baseline. It is simple, transparent and inexpensive to maintain. The current NN and SVM pipelines should not be used as the only basis for fleet dispatch. This result does not show that NNs are generally better than SVMs. It only applies to the pipelines and data evaluated in this report. A follow up project with additional information and a model designed for different demand levels may provide more value.
+
