@@ -1,15 +1,113 @@
 # Problem Description
 
+```{python}
+#| label: problem-description-metrics
+#| include: false
+
+from pathlib import Path
+
+import duckdb
+
+trip_data_path = Path(
+    "results/"
+    "problem_description_trips.parquet"
+)
+
+problem_metrics = duckdb.sql(
+    """
+    WITH trips AS (
+        SELECT
+            trip_start_timestamp,
+            pickup_community_area
+        FROM read_parquet($trip_data_path)
+    ),
+    daily_demand AS (
+        SELECT
+            CAST(trip_start_timestamp AS DATE) AS trip_date,
+            COUNT(*) AS trip_starts
+        FROM trips
+        GROUP BY trip_date
+    ),
+    hourly_demand AS (
+        SELECT
+            EXTRACT('hour' FROM trip_start_timestamp)::INTEGER AS hour,
+            COUNT(*)::DOUBLE
+                / COUNT(DISTINCT CAST(trip_start_timestamp AS DATE))
+                AS average_trip_starts
+        FROM trips
+        GROUP BY hour
+    ),
+    area_demand AS (
+        SELECT
+            pickup_community_area,
+            COUNT(*) AS trip_starts
+        FROM trips
+        WHERE pickup_community_area IS NOT NULL
+        GROUP BY pickup_community_area
+    ),
+    ranked_areas AS (
+        SELECT
+            trip_starts,
+            ROW_NUMBER() OVER (ORDER BY trip_starts DESC) AS demand_rank
+        FROM area_demand
+    )
+    SELECT
+        (SELECT SUM(trip_starts) FROM daily_demand) AS total_trip_starts,
+        (SELECT COUNT(*) FROM daily_demand) AS observed_days,
+        (SELECT AVG(trip_starts) FROM daily_demand)
+            AS average_daily_trip_starts,
+        (
+            SELECT 100.0 * SUM(trip_starts)
+                / (SELECT SUM(trip_starts) FROM area_demand)
+            FROM ranked_areas
+            WHERE demand_rank <= 5
+        ) AS top_five_area_share_pct,
+        (
+            SELECT hour
+            FROM hourly_demand
+            ORDER BY average_trip_starts DESC
+            LIMIT 1
+        ) AS peak_hour,
+        (
+            SELECT average_trip_starts
+            FROM hourly_demand
+            ORDER BY average_trip_starts DESC
+            LIMIT 1
+        ) AS peak_hour_average,
+        (
+            SELECT hour
+            FROM hourly_demand
+            ORDER BY average_trip_starts
+            LIMIT 1
+        ) AS low_hour,
+        (
+            SELECT average_trip_starts
+            FROM hourly_demand
+            ORDER BY average_trip_starts
+            LIMIT 1
+        ) AS low_hour_average
+    """,
+    params={"trip_data_path": str(trip_data_path)},
+).df().iloc[0]
+
+total_trip_starts = int(problem_metrics["total_trip_starts"])
+observed_days = int(problem_metrics["observed_days"])
+average_daily_trip_starts = problem_metrics["average_daily_trip_starts"]
+top_five_area_share_pct = problem_metrics["top_five_area_share_pct"]
+peak_hour = int(problem_metrics["peak_hour"])
+peak_hour_average = problem_metrics["peak_hour_average"]
+low_hour = int(problem_metrics["low_hour"])
+low_hour_average = problem_metrics["low_hour_average"]
+peak_to_low_ratio = peak_hour_average / low_hour_average
+```
+
 For operators of ride-hailing services tactical and strategical capabilities in operations mangement are a precondition 
 for market success. On the one hand the operator needs to understand the dynamics of the market to make guided strategical
 decisions, like in which cities and areas a ride-hailing business is likely profitable. On the other hand it is also crucial for
-the operator to be able to make daily tactical decision, for example to predict where and when demand will be high. 
-
-We have conducted an analysis of the taxi demand in Chicago, US to enable our customer to build the tactical and 
-strategical capabilities. These capabilities involve business and data understanding, whereby data understanding can be seen 
+the operator to be able to make daily tactical decision, for example to predict where and when demand will be high. We have conducted an analysis of the taxi demand in Chicago, US to enable our customer to build the tactical and 
+strategical capabilities. With a total of `{python} f"{total_trip_starts:,}"` started trips across `{python} f"{observed_days:,}"` days, and 
+`{python} f"{average_daily_trip_starts:,.0f}"` average daily trip starts, we believe that the scope of our taxi demand anylsis in Chicago is a good enough proxy for ride-hailing operations.
+The tactical and strategical capabilities involve business and data understanding, whereby data understanding can be seen 
 as the foundation. Therefore the data mining goal is to describe the dynamics of the taxi market in Chicago and develop
 prediction models to forecast demand. Further we evaluate whether these models are sufficient to make demand forecasting for daily operations.
-The business goal is to argue whether a market entry in Chicago looks promising promising to our customer. Within this report we present the findings of our analysis.
-
-- Reinforcement Learning?
-- Some real number from the taxi market (but look at data description first)
+The business goal is to argue whether a market entry in Chicago looks promising to our customer. Within this report we present the findings of our analysis.

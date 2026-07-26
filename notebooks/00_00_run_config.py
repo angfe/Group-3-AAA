@@ -1,3 +1,7 @@
+
+# Configuration is set for the final submission
+# Only RUN_MODE may be set to full and if so the APP_TOKEN needs to be entered
+
 # --------------------------------------------------
 # Enter config values below
 # --------------------------------------------------
