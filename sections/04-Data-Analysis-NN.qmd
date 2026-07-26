@@ -1,42 +1,28 @@
-# Data Analysis NN
+# Data Analysis
 
-In the following section we describe the development and evaluation of prediction models to forecast the demand.
-
-First of all, we need to determine a simple prediction against which we can compare the more complex prediction models like SVM and NN. 
-We introduce three baseline predictions: zero prediction, global mean and the mean of spatial unit x time x weekday. The last baseline
-is the most challenging one, as it already contains spatial and time related information of the demand. These baseline predictions can be used to calculate 
-performance metrics like the MAE (mean average error), which indicates the mean absolute deviation from the true observed value and the predicted value.
+In the following section we describe the development and evaluation of models to predict the demand. We understand demand as the count of trips, whereby a 
+trip is understand as a successful pickup of a customer. Therefore we select the column "trip_count" as the target for this analysis. The remaining 
+columns are used as features and contain cyclic encoded hour, weekday and month, weather data, holiday flag and point-of-interest information. The underlying idea is
+that weather data, holiday flag and point-of-interest data improve the performance of our prediction. To verify this, we first of all need to determine a simple prediction 
+against which we can compare the prediction models SVM and NN. We introduce two baseline predictions: zero prediction and the mean of spatial unit x time x weekday. 
+The latter baseline is the most challenging one, as it already contains spatial and time related information of the demand. To evaluate the performance we decided to use mainly the MAE, 
+which expresses the mean absolute deviation between the predicted and observed value. This metric is easy to interpret and helps our customer to get a sense of the performance. 
 The MAE performance of these baseline is shown in @tbl-trivial-baseline-test-mae.
-
-- Baseline prediction
-    - Zero prediction
-    - Avg Spatial x Time x Weekday
-    - Global median
-
-    - see @tbl-trivial-baseline-test-mae
-
-- General validation strategy:
-    - Test only for final model and comparison SVM vs 
-
-- Target and Features
-    - We selected "trip_count" as target for the demand, as this will tell us how many taxi trips were started in one spatial time unit
-    - Features: cyclic encoding of hour, weekday and month; weather data; holiday flag and POI information; all other taxi related columns were removed as it would otherwise lead to leakage
 
 - Preprocessing steps:
     - Spatial Encoding is needed as the spatial units are otherwise interpreted as continiuos feature
     - StandardScaler for the feature_cols fitted on training data only
 
-In this section we describe the approach of developing and evaluating a neural network as prediction model. Our approach is divided into three sequential steps. 
-First we developed a simple and reproduceable baseline NN, second we performed a grid search based on the findings of the baseline NN 
-and lastly we trained a final model based on the grid search results. 
+- ggf Train Test Split
 
-- The baseline model allow us to make a first guess whether NN's are a suitable prediction
-    model for this use case and give us an intuition of what performance we can expect. With the grid search we can compare different models and select the best performing one.
-    The goal of the grid search is not to develop a final model but to make decisions about the architecture and training parameters. Therefore we need a final
-    training in the last step. 
+## Neural Network
 
-The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision between them. Within this development phase
-our main goal was to determine whether a NN can generally perform better compared to the baseline and which spatial-time-unit is most suited.
+The development of the Neural Network is divided into three sequential steps. First we developed a simple and reproduceable baseline NN, second we performed a grid search based on the findings of the baseline NN 
+and lastly we trained a final model based on the grid search results. The purpose of the baseline NN is to observe and evaluate if and in what degree performance improvements are likely possible. 
+The grid search is a method for a structured comparison of different architectures and parameter settings. A final retraining is necessary as the purpose of the grid search is not to train the model
+to the end but to find the most promising one.
+
+The baseline NN is trained for all spatial-units and time buckets, thereby allowing a fair comparision between them. 
 The architecture of the baseline NN is kept simple with two hidden layers (64 and 32), ReLu activiation function and a spatial encoding for the 
 categorical spatial units. A spatial encoding is necessary, because the spatial ID is a categorical value. The numerical features were scaled using the StandardScaler, which was fitted only on the train set. 
 After this scaling the features have a mean close to 0 and variance close to 1. This is helpful as distances between values of features are standardized. 
@@ -78,14 +64,33 @@ the precision with 0.8123. The model struggles to predict real demand, but if it
 
 
 
-The fact that the recall is lower than the precision also leads us to propose improvements for a follow-up project. We recommend that prior to the regressions predicts a classifier model should predict the probability of low or high demand.
+The fact that the recall is lower than the precision also leads us to propose improvements for a follow-up project. We recommend that prior to the regression a classifier model should predict the probability of low or high demand.
 Further we recommend exploring separate regression models for low and high demand. The final prediction could then be an ensemble of the classification, low and high demand prediction, e. g.
 final prediction = p_high * high_model_pred + (1-p_high) * low_model_pred. A further lever may be to include lag-features like the demand in the last week or day. Then it would no longer be recommended to perform a random split of the train, validation
-and test data, but instead a chronological split should be used.
-
+and test data, but instead a chronological split should be used. It may also help to explore more features like an event calendar. 
 
 Despite the grid search was conducted only on the census_tract_1h dataset, we decided
 to train the final model S2-7 on all datasets. Of course the comparison of the final model performance between the dataset is therefore not completely fair.
 
     - @fig-final-census-tract-test-mae
     - @fig-final-mae-skill-trivial-baselines
+
+## Neural Network compared to SVM
+
+This section provides a comparision of the performance of the developed NN and SVM. Further we argue, whether it is generally worthy to employ a machine-learning model.
+
+The comparision is performed on the test set, which was not used in the development phases for the model tuning and selection. In @tbl-final-nn-svm-metric-wins we show for different metric on
+how many spatial-time units the NN or the SVM performed better. Notably the NN performed better across all metrics and spatial-time units despite for recall the SVM is performing better. The
+SVM seems to detect demand better than the NN, but the NN wins in the metric precision. This indicated that the SVM is more offensive in predicting demand compared to the NN. We looked closer
+into the performance of SVM and NN for different demand buckets in @fig-final-census-tract-1h-demand-bucket-mae for the census_tract_1h dataset. It can be seen that the SVM is slightly performing 
+better for low demand (1 and 2-3 trips) and for higher demand the NN is making better predictions. Further @fig-final-nn-svm-pipeline-comparison shows the performance metrics on each dataset for NN and SVM.
+
+Finally we look compare the performance of both NN and SVM against the baseline in @fig-final-mae-skill-trivial-baselines. The zero-demand baseline is only for the census_tract_24h dataset not outperforned by the SVM. For all
+other datasets both NN and SVM are outperforming the zero-demand baseline. However, this is of course not really a success as the zero-demand baseline does not favor business operations. The spatial x time x weekday
+baseline is only outperformed by NN for the dataset census_tract_1h. Overall this show that our developed prediction models to not perform well against the baseline. Based on the current data and
+feature selection we would not recommend the development of machine-learning models. Their development and training is costly and the small performance improvement of only one model is not justifying 
+this costs. In this current setting of data and features the spatial x time x weekday prediction is recommended as this is very simple, understandle and delivers good enough performance.
+
+However, this does not mean that the development of machine-learning models is generally not recommended for our customer. Further this does not mean that NN are performing generally better than SVM, but
+only in our analysis the NN pipeline performs better than the SVM pipelin. Developing a model with lag-features, event data and using an ensemble of models may 
+significantly outperform the provided baselines. Our final recommendation is therefore to conduct a follow-up project developing exactly such a model.

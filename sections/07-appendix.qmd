@@ -70,7 +70,6 @@ baseline_results = (
             "model_tag",
             "nn_val_mae",
             "zero_val_mae",
-            "global_median_val_mae",
             "spatial_time_weekday_mean_val_mae",
             "nn_val_mae_skill_score",
         ],
@@ -78,11 +77,6 @@ baseline_results = (
     .assign(
         skill_vs_zero=lambda frame: (
             1 - frame["nn_val_mae"] / frame["zero_val_mae"]
-        ),
-        skill_vs_global_median=lambda frame: (
-            1
-            - frame["nn_val_mae"]
-            / frame["global_median_val_mae"]
         ),
     )
     .sort_values("nn_val_mae_skill_score", ascending=False)
@@ -92,7 +86,6 @@ baseline_results = (
             "nn_val_mae": "NN MAE",
             "spatial_time_weekday_mean_val_mae": "S×T×W MAE",
             "skill_vs_zero": "Skill: zero",
-            "skill_vs_global_median": "Skill: median",
             "nn_val_mae_skill_score": "Skill: S×T×W",
         }
     )
@@ -102,7 +95,6 @@ baseline_results = (
             "NN MAE",
             "S×T×W MAE",
             "Skill: zero",
-            "Skill: median",
             "Skill: S×T×W",
         ]
     ]
@@ -116,7 +108,7 @@ baseline_results
 
 ```{python}
 #| label: tbl-trivial-baseline-test-mae
-#| tbl-cap: "Test MAE of the three trivial baselines for the filtered datasets"
+#| tbl-cap: "Test MAE of the zero and spatial × time × weekday baselines for the filtered datasets"
 #| echo: false
 #| warning: false
 
@@ -125,13 +117,13 @@ from pathlib import Path
 import pandas as pd
 from IPython.display import Markdown, display
 
-baseline_metrics_path = Path(
-    "results/appendix/baseline_test_metrics.parquet"
+comparison_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
 )
-if not baseline_metrics_path.exists():
+if not comparison_metrics_path.exists():
     raise FileNotFoundError(
-        f"Missing baseline metrics: {baseline_metrics_path}. "
-        "Run the trivial-baseline notebook before rendering the report."
+        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
     )
 
 filtered_dataset_order = [
@@ -146,22 +138,27 @@ filtered_dataset_order = [
     "community_areas_24h",
 ]
 trivial_baseline_mae = (
-    pd.read_parquet(baseline_metrics_path)
-    .loc[
-        lambda frame: (
-            frame["metric"].eq("mae")
-            & ~frame["dataset"].str.contains("unfiltered")
-        )
-    ]
-    .pivot(index="dataset", columns="baseline", values="value")
+    pd.read_parquet(
+        comparison_metrics_path,
+        columns=[
+            "dataset",
+            "model",
+            "baseline_mae_zero",
+            "baseline_mae_spatial_time_weekday_mean",
+        ],
+    )
+    .loc[lambda frame: frame["model"].eq("NN")]
+    .drop(columns="model")
+    .set_index("dataset")
     .reindex(filtered_dataset_order)
     .reset_index()
     .rename(
         columns={
             "dataset": "Dataset",
-            "zero": "Zero MAE",
-            "global_median": "Global median MAE",
-            "spatial_time_weekday_mean": "Spatial-time-weekday MAE",
+            "baseline_mae_zero": "Zero MAE",
+            "baseline_mae_spatial_time_weekday_mean": (
+                "Spatial-time-weekday MAE"
+            ),
         }
     )
     .round(4)
@@ -170,7 +167,6 @@ trivial_baseline_mae = trivial_baseline_mae[
     [
         "Dataset",
         "Zero MAE",
-        "Global median MAE",
         "Spatial-time-weekday MAE",
     ]
 ]
@@ -608,64 +604,59 @@ from pathlib import Path
 import pandas as pd
 from IPython.display import Markdown, display
 
-final_test_results_path = Path(
-    "results/appendix/final_nn_v1_test_results.parquet"
+comparison_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
 )
-if not final_test_results_path.exists():
+if not comparison_metrics_path.exists():
     raise FileNotFoundError(
-        f"Missing final test results: {final_test_results_path}. "
-        "Run the final NN notebook before rendering the report."
+        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
     )
 
 census_tract_test_result = (
-    pd.read_parquet(final_test_results_path)
-    .loc[lambda frame: frame["model_tag"].eq("census_tracts_1h")]
+    pd.read_parquet(comparison_metrics_path)
+    .loc[
+        lambda frame: (
+            frame["dataset"].eq("census_tracts_1h")
+            & frame["model"].eq("NN")
+        )
+    ]
 )
 if len(census_tract_test_result) != 1:
     raise ValueError(
-        "Expected exactly one final test-result row for census_tracts_1h"
+        "Expected exactly one final NN row for census_tracts_1h"
     )
 census_tract_test_result = census_tract_test_result.iloc[0]
 
-skill_vs_zero = (
-    1
-    - census_tract_test_result["nn_test_mae"]
-    / census_tract_test_result["zero_test_mae"]
-)
-skill_vs_global_median = (
-    1
-    - census_tract_test_result["nn_test_mae"]
-    / census_tract_test_result["global_median_test_mae"]
-)
-
 census_tract_test_scores = pd.DataFrame(
     [
-        ("MAE", census_tract_test_result["nn_test_mae"]),
-        ("RMSE", census_tract_test_result["nn_test_rmse"]),
-        ("R²", census_tract_test_result["nn_test_r2"]),
-        ("Zero-demand MAE", census_tract_test_result["nn_test_zero_mae"]),
+        ("MAE", census_tract_test_result["mae"]),
+        ("RMSE", census_tract_test_result["rmse"]),
+        ("R²", census_tract_test_result["r2"]),
+        ("Zero-demand MAE", census_tract_test_result["zero_mae"]),
         (
             "Non-zero-demand MAE",
-            census_tract_test_result["nn_test_nonzero_mae"],
+            census_tract_test_result["demand_mae"],
         ),
-        ("Peak-demand MAE", census_tract_test_result["nn_test_peak_mae"]),
-        ("Balanced MAE", census_tract_test_result["nn_test_balanced_mae"]),
-        ("MAE Skill Score vs. zero", skill_vs_zero),
+        ("Peak-demand MAE", census_tract_test_result["peak_mae"]),
+        ("Balanced MAE", census_tract_test_result["balanced_mae"]),
         (
-            "MAE Skill Score vs. global median",
-            skill_vs_global_median,
+            "MAE Skill Score vs. zero",
+            census_tract_test_result["mae_skill_vs_zero"],
         ),
         (
             "MAE Skill Score vs. spatial × time × weekday",
-            census_tract_test_result["nn_test_mae_skill_score"],
+            census_tract_test_result[
+                "mae_skill_vs_spatial_time_weekday_mean"
+            ],
         ),
         (
             "Demand precision",
-            census_tract_test_result["test_demand_precision"],
+            census_tract_test_result["demand_precision"],
         ),
         (
             "Demand recall",
-            census_tract_test_result["test_demand_recall"],
+            census_tract_test_result["demand_recall"],
         ),
     ],
     columns=["Metric", "Value"],
@@ -943,177 +934,509 @@ figure.colorbar(
 plt.show()
 ```
 
-## Final model skill scores against baselines {#sec-final-skill-baselines}
+## Final NN and SVM skill scores against baselines {#sec-final-skill-baselines}
 
 ```{python}
 #| label: fig-final-mae-skill-trivial-baselines
-#| fig-cap: "Final-model test MAE Skill Scores against the zero, global-median, and spatial × time × weekday baselines. Positive values indicate that the neural network has a lower test MAE than the respective baseline. The broken x-axis preserves the extreme negative score of the unfiltered 24h model while keeping the other scores readable."
+#| fig-cap: "Test MAE Skill Scores of the final NN and SVM pipelines against the zero-demand and spatial × time × weekday baselines. Scores are calculated on the complete test set. Positive values indicate a lower MAE than the respective baseline."
 #| echo: false
 #| warning: false
 
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
 
-final_test_results_path = Path(
-    "results/appendix/final_nn_v1_test_results.parquet"
+comparison_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
 )
-if not final_test_results_path.exists():
+if not comparison_metrics_path.exists():
     raise FileNotFoundError(
-        f"Missing final test results: {final_test_results_path}. "
-        "Run the final NN notebook before rendering the report."
+        f"Missing NN-SVM comparison metrics: {comparison_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
     )
 
-final_skill_scores = pd.read_parquet(
-    final_test_results_path,
+skill_metrics = pd.read_parquet(
+    comparison_metrics_path,
     columns=[
-        "model_tag",
-        "nn_test_mae",
-        "zero_test_mae",
-        "global_median_test_mae",
-        "spatial_time_weekday_mean_test_mae",
-        "nn_test_mae_skill_score",
+        "dataset",
+        "model",
+        "mae_skill_vs_zero",
+        "mae_skill_vs_spatial_time_weekday_mean",
     ],
 )
-reference_mae_columns = [
-    "zero_test_mae",
-    "global_median_test_mae",
-    "spatial_time_weekday_mean_test_mae",
+dataset_order = [
+    "census_tracts_1h",
+    "census_tracts_4h",
+    "census_tracts_24h",
+    "community_areas_1h",
+    "community_areas_4h",
+    "community_areas_24h",
+    "hexagon_h3r7_1h",
+    "hexagon_h3r7_4h",
+    "hexagon_h3r7_24h",
 ]
-if (final_skill_scores[reference_mae_columns] <= 0).any().any():
+dataset_labels = {
+    "census_tracts_1h": "Census tracts · 1H",
+    "census_tracts_4h": "Census tracts · 4H",
+    "census_tracts_24h": "Census tracts · 24H",
+    "community_areas_1h": "Community areas · 1H",
+    "community_areas_4h": "Community areas · 4H",
+    "community_areas_24h": "Community areas · 24H",
+    "hexagon_h3r7_1h": "H3 resolution 7 · 1H",
+    "hexagon_h3r7_4h": "H3 resolution 7 · 4H",
+    "hexagon_h3r7_24h": "H3 resolution 7 · 24H",
+}
+expected_pairs = pd.MultiIndex.from_product(
+    [dataset_order, ["NN", "SVM"]],
+    names=["dataset", "model"],
+)
+actual_pairs = pd.MultiIndex.from_frame(
+    skill_metrics[["dataset", "model"]]
+)
+if (
+    len(expected_pairs.difference(actual_pairs))
+    or skill_metrics.duplicated(["dataset", "model"]).any()
+):
     raise ValueError(
-        "MAE Skill Scores require strictly positive baseline MAEs"
+        "Expected exactly one NN and one SVM row for every dataset."
     )
 
-# Use the same order as the existing skill-score plot against the
-# spatial × weekday × time baseline in the final NN notebook.
-final_skill_scores = final_skill_scores.sort_values(
-    "nn_test_mae_skill_score",
-)
-final_skill_scores["skill_vs_zero"] = (
-    1
-    - final_skill_scores["nn_test_mae"]
-    / final_skill_scores["zero_test_mae"]
-)
-final_skill_scores["skill_vs_global_median"] = (
-    1
-    - final_skill_scores["nn_test_mae"]
-    / final_skill_scores["global_median_test_mae"]
-)
-final_skill_scores["skill_vs_spatial_time_weekday"] = (
-    1
-    - final_skill_scores["nn_test_mae"]
-    / final_skill_scores["spatial_time_weekday_mean_test_mae"]
-)
-
-dataset_positions = np.arange(len(final_skill_scores))
-bar_height = 0.24
-
-figure, (outlier_axis, main_axis) = plt.subplots(
-    1,
-    2,
-    sharey=True,
-    figsize=(12, 6.7),
-    gridspec_kw={
-        "width_ratios": [1, 5],
-        "wspace": 0.04,
-    },
-)
-skill_score_series = [
+plot_specs = [
     (
-        "skill_vs_zero",
-        "Zero baseline",
-        "tab:blue",
-        -bar_height,
+        "mae_skill_vs_zero",
+        "MAE skill vs. zero-demand baseline",
     ),
     (
-        "skill_vs_global_median",
-        "Global-median baseline",
-        "tab:orange",
-        0,
-    ),
-    (
-        "skill_vs_spatial_time_weekday",
-        "Spatial × time × weekday baseline",
-        "tab:green",
-        bar_height,
+        "mae_skill_vs_spatial_time_weekday_mean",
+        "MAE skill vs. spatial × time × weekday baseline",
     ),
 ]
-for axis in (outlier_axis, main_axis):
-    for column, label, color, offset in skill_score_series:
-        axis.barh(
-            dataset_positions + offset,
-            final_skill_scores[column],
-            height=bar_height,
-            label=label,
-            color=color,
-        )
-    axis.grid(axis="x", alpha=0.25)
-
-# One spatial-baseline score is around -4.8, whereas all other scores lie
-# between roughly -0.65 and 0.75. The split retains the actual linear values
-# in both ranges without compressing the remaining bars.
-outlier_axis.set_xlim(-5.1, -4.5)
-main_axis.set_xlim(-0.75, 0.8)
-main_axis.axvline(0, color="black", linewidth=1)
-outlier_axis.set(
-    ylabel="Dataset",
-    yticks=dataset_positions,
-    yticklabels=final_skill_scores["model_tag"],
-)
-main_axis.tick_params(
-    axis="y",
-    left=False,
-    labelleft=False,
-)
-outlier_axis.spines["right"].set_visible(False)
-main_axis.spines["left"].set_visible(False)
-
-# Diagonal marks indicate the omitted interval between the two x-axis ranges.
-break_size = 0.012
-break_style = {
-    "color": "black",
-    "clip_on": False,
-    "linewidth": 1,
+model_colors = {
+    "NN": "#1f77b4",
+    "SVM": "#ff7f0e",
 }
-outlier_axis.plot(
-    (1 - break_size, 1 + break_size),
-    (-break_size, break_size),
-    transform=outlier_axis.transAxes,
-    **break_style,
-)
-outlier_axis.plot(
-    (1 - break_size, 1 + break_size),
-    (1 - break_size, 1 + break_size),
-    transform=outlier_axis.transAxes,
-    **break_style,
-)
-main_axis.plot(
-    (-break_size, break_size),
-    (-break_size, break_size),
-    transform=main_axis.transAxes,
-    **break_style,
-)
-main_axis.plot(
-    (-break_size, break_size),
-    (1 - break_size, 1 + break_size),
-    transform=main_axis.transAxes,
-    **break_style,
-)
+dataset_positions = np.arange(len(dataset_order))
+bar_width = 0.38
 
-legend_handles, legend_labels = main_axis.get_legend_handles_labels()
-figure.legend(
-    legend_handles,
-    legend_labels,
-    loc="upper center",
-    bbox_to_anchor=(0.62, 1.01),
-    ncol=3,
+figure, axes = plt.subplots(
+    2,
+    1,
+    figsize=(13.5, 9.5),
+    sharex=True,
+    constrained_layout=True,
 )
-figure.supxlabel("Test MAE Skill Score")
-figure.tight_layout(rect=(0, 0.04, 1, 0.93))
+for axis, (metric, title) in zip(axes, plot_specs):
+    for offset, model in (
+        (-bar_width / 2, "NN"),
+        (bar_width / 2, "SVM"),
+    ):
+        values = (
+            skill_metrics.loc[
+                lambda frame: frame["model"].eq(model),
+                ["dataset", metric],
+            ]
+            .set_index("dataset")
+            .reindex(dataset_order)[metric]
+            .to_numpy()
+        )
+        axis.bar(
+            dataset_positions + offset,
+            values,
+            bar_width,
+            label=model,
+            color=model_colors[model],
+        )
+
+    axis.axhline(0, color="black", linewidth=1)
+    axis.set_title(title, loc="left")
+    axis.set_ylabel("MAE skill score")
+    axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+    axis.grid(axis="y", alpha=0.25)
+    axis.legend(frameon=False, ncols=2)
+
+axes[-1].set_xticks(dataset_positions)
+axes[-1].set_xticklabels(
+    [dataset_labels[dataset] for dataset in dataset_order],
+    rotation=35,
+    ha="right",
+)
+figure.suptitle(
+    "MAE skill scores by model and dataset",
+    fontsize=15,
+)
 plt.show()
+```
+
+## Final NN and SVM pipeline comparison {#sec-final-nn-svm-comparison}
+
+```{python}
+#| label: setup-final-nn-svm-comparison
+#| include: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
+import numpy as np
+import pandas as pd
+
+svm_nn_metrics_path = Path(
+    "results/appendix/svm_nn_model_metrics.parquet"
+)
+if not svm_nn_metrics_path.exists():
+    raise FileNotFoundError(
+        f"Missing NN-SVM comparison metrics: {svm_nn_metrics_path}. "
+        "Run the NN-SVM comparison notebook before rendering the report."
+    )
+
+svm_nn_metrics = pd.read_parquet(svm_nn_metrics_path)
+required_columns = {
+    "dataset",
+    "model",
+    "mae",
+    "rmse",
+    "demand_mae",
+    "zero_mae",
+    "balanced_mae",
+    "peak_mae",
+    "r2",
+    "demand_precision",
+    "demand_recall",
+    "mae_skill_vs_zero",
+    "mae_skill_vs_spatial_time_weekday_mean",
+}
+missing_columns = required_columns.difference(svm_nn_metrics.columns)
+if missing_columns:
+    raise ValueError(
+        "NN-SVM comparison metrics are missing columns: "
+        + ", ".join(sorted(missing_columns))
+    )
+
+svm_nn_dataset_order = [
+    "census_tracts_1h",
+    "census_tracts_4h",
+    "census_tracts_24h",
+    "community_areas_1h",
+    "community_areas_4h",
+    "community_areas_24h",
+    "hexagon_h3r7_1h",
+    "hexagon_h3r7_4h",
+    "hexagon_h3r7_24h",
+]
+expected_pairs = pd.MultiIndex.from_product(
+    [svm_nn_dataset_order, ["NN", "SVM"]],
+    names=["dataset", "model"],
+)
+actual_pairs = pd.MultiIndex.from_frame(
+    svm_nn_metrics[["dataset", "model"]]
+)
+missing_pairs = expected_pairs.difference(actual_pairs)
+duplicate_pairs = svm_nn_metrics.duplicated(
+    ["dataset", "model"],
+    keep=False,
+)
+if len(missing_pairs) or duplicate_pairs.any():
+    raise ValueError(
+        "Expected exactly one NN and one SVM row for every comparison dataset."
+    )
+
+svm_nn_dataset_labels = {
+    "census_tracts_1h": "Census tracts · 1H",
+    "census_tracts_4h": "Census tracts · 4H",
+    "census_tracts_24h": "Census tracts · 24H",
+    "community_areas_1h": "Community areas · 1H",
+    "community_areas_4h": "Community areas · 4H",
+    "community_areas_24h": "Community areas · 24H",
+    "hexagon_h3r7_1h": "H3 resolution 7 · 1H",
+    "hexagon_h3r7_4h": "H3 resolution 7 · 4H",
+    "hexagon_h3r7_24h": "H3 resolution 7 · 24H",
+}
+svm_nn_model_colors = {
+    "NN": "#1f77b4",
+    "SVM": "#ff7f0e",
+}
+
+
+def ordered_metric_values(metric, model):
+    return (
+        svm_nn_metrics.loc[
+            lambda frame: frame["model"].eq(model),
+            ["dataset", metric],
+        ]
+        .set_index("dataset")
+        .reindex(svm_nn_dataset_order)[metric]
+        .to_numpy()
+    )
+```
+
+```{python}
+#| label: fig-final-nn-svm-pipeline-comparison
+#| fig-cap: "High-level test-set comparison of the final neural-network and SVM pipelines. Both models are evaluated against the same canonical targets for each dataset. Demand precision and recall use a prediction threshold of 0.5 trips."
+#| echo: false
+#| warning: false
+
+svm_nn_plot_metrics = [
+    ("mae", "MAE"),
+    ("demand_mae", "Demand MAE"),
+    ("zero_mae", "Zero MAE"),
+    ("r2", "R²"),
+    ("demand_precision", "Demand precision"),
+    ("demand_recall", "Demand recall"),
+]
+dataset_positions = np.arange(len(svm_nn_dataset_order))
+bar_width = 0.38
+
+figure, axes = plt.subplots(
+    3,
+    2,
+    figsize=(13.5, 14),
+    constrained_layout=True,
+)
+for axis, (metric, title) in zip(axes.flat, svm_nn_plot_metrics):
+    for offset, model in (
+        (-bar_width / 2, "NN"),
+        (bar_width / 2, "SVM"),
+    ):
+        axis.bar(
+            dataset_positions + offset,
+            ordered_metric_values(metric, model),
+            bar_width,
+            label=model,
+            color=svm_nn_model_colors[model],
+        )
+
+    axis.set_title(title)
+    axis.set_xticks(dataset_positions)
+    axis.set_xticklabels(
+        [
+            svm_nn_dataset_labels[dataset]
+            for dataset in svm_nn_dataset_order
+        ],
+        rotation=35,
+        ha="right",
+    )
+    axis.grid(axis="y", alpha=0.25)
+    axis.legend(frameon=False)
+
+figure.suptitle(
+    "Final NN and SVM pipelines on the same canonical test targets",
+    fontsize=15,
+)
+plt.show()
+```
+
+```{python}
+#| label: fig-final-census-tract-1h-demand-bucket-mae
+#| fig-cap: "Test MAE of the final NN and SVM pipelines by actual-demand bucket for the census-tract 1h dataset. The mean actual demand in each bucket is included as a reference. Values above the bars are given in trips per hour."
+#| echo: false
+#| warning: false
+
+census_bucket_specs = [
+    ("0", "0"),
+    ("1", "1"),
+    ("2–3", "2_3"),
+    ("4–5", "4_5"),
+    ("6–10", "6_10"),
+    ("11–20", "11_20"),
+    (">20", "gt_20"),
+]
+census_bucket_columns = [
+    column
+    for _, suffix in census_bucket_specs
+    for column in (
+        f"demand_bucket_mae_{suffix}",
+        f"demand_bucket_mean_y_true_{suffix}",
+    )
+]
+missing_bucket_columns = set(census_bucket_columns).difference(
+    svm_nn_metrics.columns
+)
+if missing_bucket_columns:
+    raise ValueError(
+        "NN-SVM comparison metrics are missing demand-bucket columns: "
+        + ", ".join(sorted(missing_bucket_columns))
+    )
+
+census_bucket_metrics = (
+    svm_nn_metrics
+    .loc[
+        lambda frame: frame["dataset"].eq("census_tracts_1h"),
+        ["model", *census_bucket_columns],
+    ]
+    .set_index("model")
+    .reindex(["NN", "SVM"])
+)
+if census_bucket_metrics.isna().any().any():
+    raise ValueError(
+        "Census-tract 1h demand-bucket metrics are incomplete."
+    )
+
+bucket_labels = [label for label, _ in census_bucket_specs]
+nn_bucket_mae = np.array(
+    [
+        census_bucket_metrics.loc["NN", f"demand_bucket_mae_{suffix}"]
+        for _, suffix in census_bucket_specs
+    ]
+)
+svm_bucket_mae = np.array(
+    [
+        census_bucket_metrics.loc["SVM", f"demand_bucket_mae_{suffix}"]
+        for _, suffix in census_bucket_specs
+    ]
+)
+nn_bucket_mean_demand = np.array(
+    [
+        census_bucket_metrics.loc[
+            "NN",
+            f"demand_bucket_mean_y_true_{suffix}",
+        ]
+        for _, suffix in census_bucket_specs
+    ]
+)
+svm_bucket_mean_demand = np.array(
+    [
+        census_bucket_metrics.loc[
+            "SVM",
+            f"demand_bucket_mean_y_true_{suffix}",
+        ]
+        for _, suffix in census_bucket_specs
+    ]
+)
+if not np.allclose(
+    nn_bucket_mean_demand,
+    svm_bucket_mean_demand,
+):
+    raise ValueError(
+        "NN and SVM rows must contain the same canonical bucket means."
+    )
+
+bucket_positions = np.arange(len(census_bucket_specs))
+bar_width = 0.26
+figure, axis = plt.subplots(
+    figsize=(12.5, 6.2),
+    constrained_layout=True,
+)
+bar_groups = [
+    axis.bar(
+        bucket_positions - bar_width,
+        nn_bucket_mae,
+        width=bar_width,
+        label="NN MAE",
+        color=svm_nn_model_colors["NN"],
+    ),
+    axis.bar(
+        bucket_positions,
+        svm_bucket_mae,
+        width=bar_width,
+        label="SVM MAE",
+        color=svm_nn_model_colors["SVM"],
+    ),
+    axis.bar(
+        bucket_positions + bar_width,
+        nn_bucket_mean_demand,
+        width=bar_width,
+        label="Mean actual demand",
+        color="#7f7f7f",
+    ),
+]
+for bars in bar_groups:
+    axis.bar_label(
+        bars,
+        fmt="%.2f",
+        padding=3,
+        fontsize=8,
+        rotation=90,
+    )
+
+axis.set(
+    title="Census-tract 1H performance by demand bucket",
+    xlabel="Actual-demand bucket",
+    ylabel="Trips per hour",
+    xticks=bucket_positions,
+    xticklabels=bucket_labels,
+)
+axis.grid(axis="y", alpha=0.25)
+axis.legend(frameon=False, ncols=3)
+axis.margins(y=0.16)
+plt.show()
+```
+
+```{python}
+#| label: tbl-final-nn-svm-metric-wins
+#| tbl-cap: "Number of datasets won by the final NN and SVM pipelines for each test metric. Error metrics are won by the lower value; R², demand precision, demand recall, and MAE Skill Scores are won by the higher value."
+#| echo: false
+#| warning: false
+
+from IPython.display import Markdown, display
+
+winner_metric_specs = [
+    ("r2", "R²", True),
+    ("mae", "MAE", False),
+    ("rmse", "RMSE", False),
+    ("demand_mae", "Demand MAE", False),
+    ("zero_mae", "Zero-demand MAE", False),
+    ("balanced_mae", "Balanced MAE", False),
+    ("peak_mae", "Peak-demand MAE", False),
+    ("demand_precision", "Demand precision", True),
+    ("demand_recall", "Demand recall", True),
+    ("mae_skill_vs_zero", "MAE skill vs. zero", True),
+    (
+        "mae_skill_vs_spatial_time_weekday_mean",
+        "MAE skill vs. spatial × time × weekday",
+        True,
+    ),
+]
+
+winner_rows = []
+for metric, metric_label, higher_is_better in winner_metric_specs:
+    paired_values = (
+        svm_nn_metrics
+        .pivot(index="dataset", columns="model", values=metric)
+        .reindex(svm_nn_dataset_order)
+    )
+    if paired_values[["NN", "SVM"]].isna().any().any():
+        raise ValueError(
+            f"Metric {metric} is not comparable for every dataset."
+        )
+
+    if higher_is_better:
+        nn_wins = paired_values["NN"].gt(paired_values["SVM"])
+        svm_wins = paired_values["SVM"].gt(paired_values["NN"])
+    else:
+        nn_wins = paired_values["NN"].lt(paired_values["SVM"])
+        svm_wins = paired_values["SVM"].lt(paired_values["NN"])
+
+    winner_rows.append(
+        {
+            "Metric": metric_label,
+            "Preferred value": (
+                "Higher" if higher_is_better else "Lower"
+            ),
+            "NN wins": int(nn_wins.sum()),
+            "SVM wins": int(svm_wins.sum()),
+        }
+    )
+
+winner_counts = pd.DataFrame(winner_rows)
+if not (
+    winner_counts[["NN wins", "SVM wins"]].sum(axis=1)
+    == len(svm_nn_dataset_order)
+).all():
+    raise ValueError(
+        "Winner counts do not cover all comparison datasets; "
+        "check for tied values."
+    )
+
+header = "| " + " | ".join(winner_counts.columns) + " |"
+separator = "|---|:---:|---:|---:|"
+rows = [
+    "| " + " | ".join(str(value) for value in row) + " |"
+    for row in winner_counts.itertuples(index=False, name=None)
+]
+display(Markdown("\n".join([header, separator, *rows])))
 ```
 
 ## Neural-network grid search {#sec-nn-grid-search}
