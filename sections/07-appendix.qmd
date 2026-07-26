@@ -1445,7 +1445,7 @@ These are the changes we made during the developement of the svm in steps and wh
 - Since we were running into runtime issues we changed changed grid search to only include the hyperparameter relevant for each kernel.
 - To further counteract these issues we added Nystroem[@sklearn_api; @pedregosa2011scikit].
 - Due to the same reason, we changed GridSearchCV[@sklearn_api; @pedregosa2011scikit] to RandomSearchCV.
-- Since we were using a pipeline now we also added the StandardScaler to the Pipeline[].
+- Since we were using a pipeline now we also added the StandardScaler to the Pipeline[@sklearn_api; @pedregosa2011scikit].
 - Since we were still runnig into issues withe the runtime and to get a better performing SVR we added TransformedTargetRegressor[@sklearn_api; @pedregosa2011scikit].
 - For the same reason as before we added cashing(memory) to the pipeline.
 - The SVM with the kernel linear was changed to LinearSVM[@sklearn_api; @pedregosa2011scikit].
