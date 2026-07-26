@@ -10,7 +10,7 @@ Hourly weather observations come from Midway, O'Hare and Lansing Municipal
 Airport, and each spatial unit is linked to its nearest station
 [@iowaMesonetASOS]. OpenStreetMap features are obtained through OSMnx and
 grouped into food and drink venues, train stations, shops and landmarks
-[@openStreetMapContributors; @boeing2017osmnx]. Illinois public holidays
+[@openStreetMapContributors]. Illinois public holidays
 complete the temporal context [@pythonHolidays].
 
 | Source | Provider | Coverage | Role |
