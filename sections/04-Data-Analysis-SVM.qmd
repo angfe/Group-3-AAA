@@ -10,7 +10,7 @@ are converted from longitude and latitude to spherical coordinates. The final sc
 compares linear SVR with kernel approximations and uses successive-halving model
 selection. Kernel approximation, caching and restricted search spaces make the
 large data sets computationally tractable. GPU training with cuML
-[@rapids_cuml] was also evaluated, but project runs on larger samples produced
+[@rapids_cuml, @raschka2020machine] was also evaluated, but project runs on larger samples produced
 unstable results. The pipeline and this implementation-specific observation are
 documented in the Appendix.
 

@@ -1449,10 +1449,11 @@ These are the changes we made during the developement of the svm in steps and wh
 - Since we were still runnig into issues withe the runtime and to get a better performing SVR we added TransformedTargetRegressor[@sklearn_api; @pedregosa2011scikit].
 - For the same reason as before we added cashing(memory) to the pipeline.
 - The SVM with the kernel linear was changed to LinearSVM[@sklearn_api; @pedregosa2011scikit].
-- Use cuml[@rapids_cuml] to run model on the GPU instead of the CPU.
+- Use cuml[@rapids_cuml, @raschka2020machine] to run model on the GPU instead of the CPU.
 - Find a good subset of hyperparameter through testing.
 - Changed from RandomSearchCV to HalvingGridSearchCV. Used RandomSearchCV before since HalvingGridSearchCV is still experimental. For our data HalvingGridSearchCV seems to work better[@sklearn_api; @pedregosa2011scikit].
-
+- The scikit-learn LinearSVR, LinearSVC, SVR, and SVC were changed to the equivalent cuml version.[@rapids_cuml, @raschka2020machine] 
+- Changed it so y_pred can only be non-negative since trip count can not be negative.
 
 ### Pipeline SVR/SVC
 - TransformedTargetRegressor (not part of SVC)
@@ -1465,7 +1466,7 @@ These are the changes we made during the developement of the svm in steps and wh
 
 ![Statistics of SVC](./report_assets/figures/appendix/svc_hexa.png){#fig-heatmap width=80%}
 
-The current result of the SVC does not look good. Due to the focus on the SVR, we were unable to further develope this model.
+The current result of the SVC does not look good. Due to the focus on the SVR, we were unable to further develope this model[@sklearn_api; @pedregosa2011scikit].
 
 ## Appendix: Reinforcement Learning
 
