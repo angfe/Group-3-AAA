@@ -1452,7 +1452,7 @@ These are the changes we made during the developement of the svm in steps and wh
 - Use cuml[@rapids_cuml, @raschka2020machine] to run model on the GPU instead of the CPU.
 - Find a good subset of hyperparameter through testing.
 - Changed from RandomSearchCV to HalvingGridSearchCV. Used RandomSearchCV before since HalvingGridSearchCV is still experimental. For our data HalvingGridSearchCV seems to work better[@sklearn_api; @pedregosa2011scikit].
-- The scikit-learn LinearSVR, LinearSVC, SVR, and SVC were changed to the equivalent cuml version.[@rapids_cuml, @raschka2020machine] 
+- The scikit-learn LinearSVR, LinearSVC, SVR, and SVC were changed to the equivalent cuml version.[@rapids_cuml; @raschka2020machine; @sklearn_api; @pedregosa2011scikit] 
 - Changed it so y_pred can only be non-negative since trip count can not be negative.
 
 ### Pipeline SVR/SVC
