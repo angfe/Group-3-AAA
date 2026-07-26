@@ -1,26 +1,26 @@
 # Conclusion
 
 First of all, an average of 15,731 daily taxi trips indicates substantial demand and makes Chicago a promising market.
-The data analysis has identified spatial and temporal demand patterns, for example we found that the five busiest
+The data analysis has identified spatial and temporal demand patterns, for example, we found that the five busiest
 community areas account for 74.66% of pickups, demand peaks on thursdays around 5 pm, while the demand is lowest on sundays. 
 Further trips from and to the airport are very frequent. For our customer this means that they should initially
 focus on the busiest community areas in the central Chicago and availability should be adapted to weekday and hour.
-With the current data and restrictions of feature usage the analysis showed that NN and SVM models create little
+With the current data and restrictions on feature usage the analysis showed that NN and SVM models create little
 operational value. Only the NN on census_tract_1h outperforms the spatial x time x weekday baseline,
 while prediction errors are largest during high-demand periods. Without additional data sources, lag-features or an ensemble model
 using a demand classifier and separate high and low demand models, the simple and transparent baseline is preferable.
 
 Regarding smart charging, we found that Q-learning reduces charging cost by 37.1% while maintaining a 0% out-of-energy rate. 
-Its tabular approach is more suitable than the DQN for the small discrete state space. The simulation assumes private charging and excludes installation costs, public-charger queues and lost revenue. 
-Its 14:00–16:00 charging window may also conflict with the 17:00 demand peak. We therefore recommend our customer
+Its tabular approach is more suitable than the DQN for the small discrete state spaces. The simulation assumes private charging and excludes installation costs, public-charger queues and lost revenue. 
+Its 2 pm – 4 pm charging window may also conflict with the 5 pm demand peak. Therefore, we recommend our customer
 to initially combine public charging as backup with limited private depot charging at locations with predictable dwell time. 
 Further investment requires a total-cost comparison covering infrastructure, electricity, waiting time, empty mileage and lost trips.
 
-Lastly we want to provide a methodological assessment and outlook. Complete spatial-time panels distinguish observed zero-trip periods from missing observations. 
-Separate error measures for zero and non-zero demand, together with a meaningful baseline, prevent the many zero-demand periods from overstating model performance.
+Lastly, we want to provide a methodological assessment and outlook. Complete spatial-time panels distinguish observed zero-trip periods from missing observations. 
+Separate error measures for zero and non-zero demand together with a meaningful baseline, prevent the many zero-demand periods from overstating model performance.
 Nevertheless, privacy-protected centroids prevent street-level conclusions, and competition and fleet economics are not observed.
 In a follow-up project lagged demand, chronological testing and a two-stage classifier-regression approach should address zero, low and high demand. 
 Fare and drop-off data could support revenue and repositioning analyses. Further additional data sources like
 events, airport schedules, actual ride-hailing requests, charger availability and electricity tariffs would improve operational decisions.
-Our final recommendation is, that Chicago is a promising for a focused follow-up project and electric-fleet pilot, but not yet for an unconditional city-wide rollout.
-Expansion should depend on demonstrated vehicle utilization, charging economics and contribution margins.
+Our final recommendation is, that Chicago shows high potential as a promising follow-up project and electric-fleet pilot. However, it is not ready for an unconditional city-wide rollout yet.
+The expansion should depend on vehicle utilization, charging economics and contribution margins.
