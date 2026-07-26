@@ -4,76 +4,84 @@ In order to understand demand in different areas of the city better, we used two
 Specifically, in this section we will be focusing on SVM with regression, in other words SVR.
 The objective of the model is to predict the trip demand particularly the trip count as accurately as possible.
 
-Our SVR model is trained and tested on the data as described here (insert link).
+Our SVR model is trained and tested on the data as described above.
 ----
 
-set non negatives to 0 since there cant be negative demand
+The models were trained using a combination of three different spatial units: These are hexagons [@uberH3], census tracts [@chicagoCensusTracts], and community areas [@chicagoCommunityAreas].
+The chosen time frames are one hour, four hours, and twenty-four hours.
+Our target and opjective is trip count.
+Our features include: Cyclic encoded time, including hour, weekday, and month.
+We also include weather data [@iowaMesonetASOS], whether the day is a holiday, and points of interest in the city.
+Since we have three different spatial units, the spatial encoding had to work for all three units.
+Different encodings were taken into consideration such as spatial embedding, onehot encoding and latitude longitude encoding.
+As a result of working with all three spatial units, longitude-latitude encoding was chosen.
+Due to the dependencies between latitude and longitude, spherical encoding was performed on them.
 
-For SVM we used the same data as described above. With time units consisting of one hour, four hour and twentyfour hour.
-The spatial units used include hexagons\ref{}
-The target was defined as "trip_count". The amount of started trips during 
-The features are Features: cyclic encoding of hour, weekday and month; weather data; holiday flag and POI information; all other taxi related columns were removed as it would otherwise lead to leakage
-and the spatial unit encoded as latitude longitude with x, y, z due to show the dependencies of latitude and longitude.
-This was chosen since most other encoding did not work for all three spatial units. 
-Especially OneHot encoding only worked for community areas.
-We started with a simple kernel without anything. At first we added 
 
-To compare the results with the Neural Network we decided to focus on regression instead of classification.
-The biggest problem we run into during the developement is the runtime of the gridsearch and the fitting.
-These exceeded multiple hours depending on the spatial unit and time frame.
-
-The changes we made included:
-- changes we made during the developement of th svm in steps and why we decided on them
-- started with a basic svr on rbf kernel which is the basic kernel for scikits() implementation of svms
-- added grid search to find best hyperparameter
-- added scaler
-- changed grid search to only include the hyperparameter relevant for each kernel
-- added nystroem
-- changed gridsearchcv to randomsearchcv to make hyperparameter fitting quicker
-- changed gridsearch to include standardscaler in pipeline instead of manually
-- added transgressor
-- added memory
-- for linear use linear
-- change available hyperparamter through testing
-- changed to halving... instead of randomsearchcv due to better results
-- tested this out as the last option due to still being experimental
-
-The last version consisted of a pipeline which is: TransformedTargetRegressor, standardscaler, Nystroem and 
-
-- due to the data having a lot of y=0 the grid search complains about convergance issues -> this is another reason why svm for this particaluar data with h3 is not the best method
-- The time frames and spatial units, used above in the Neural Network() were used here as well.
-- These include time frames of one, two and twentyfour hours. 
-- The used spatial units include 
-
-## SVR
-
+Since the dataset contains a significant amount of data, reducing the runtime was an important step.
+We started out with a simple kernel which grew into a pipeline.
+At one point we had to place the focus of the pipeline on runtime reduction.
+However, once this was resolved, enhancing the SVM's performance became the primary concern.
+We developed a pipeline for SVR with models from scikit-learn [@pedregosa2011scikit]. The SVR/LinearSVR model was changed to the equilifiant model form cuml [@rapids_cuml].
+Due to this still not working perfectly the model was trained on the GPU with cuml [@rapids_cuml].
+During this we found a bug in cuml which left us unable to train the model on the whole dataset.
+Further information can be found in the appendix.
 
 
 ## Results
 
+{{< embed notebooks/03_04_predictive_analytics_svm_comparison.ipynb#compare_to_baseline>}}
+{{< embed notebooks/03_04_predictive_analytics_svm_comparison.ipynb#heat_map_svm>}}
+
+We compared the svr model to three baseline model.
+These baseline model either use zero, global median or the mean of the time and spatial unit.
+Our model performs better than the global median and zero model. But it performs worse than the mean of spatial and time unit model.
+This could have multiple reasons. But the most likely reason might be the dataset consisting mostly of zeroes.
+In SVMs this might lead to... which are things we also observed.
+
+The SVR's best performance compared to the baseline is for spatial unit hexagon 7 and the four-hour time frame.
+The differences from the baseline model are small, though, apart from the metrics for the 24-hour time frame.
+
+When comparing different time frames and spatial units, Hexagon with a resolution of 8 seems to perform the best, except for the R2 metric.
 
 
-Overall the spatial units which have bigger units outside the center of the city where most people take taxis seem to perform better.
-This might be due to the fact that the grid searcha as well as the fitting does not 
+### How spatial resolution seems to change the outcome?
+
+Both hexagons seem to perform best. The sparser grid of 7 seems to perform better with the R² score, whereas the Hexagon grid with a resolution of 8 performs better with the mean absolute error. Census tracts perform the worst in the R² metric, whereas community areas perform the worst in the mean absolute error and root mean squared error metrics.
+Both of these seem to perform mediocre for the other metrics.
+
+### How temporal resoltion changed the outcome?
+
+Overall, a smaller temporal resolution tends to be better, while a larger one tends to be worse.
+The performance of the community areas is especially poor for the twenty-four hour dataset.
+
 
 ## SVC
-The classification was developed at the side and run on the best SVRs.
+The classification was developed at the side and run on all the spatial units, but only with time frame 4.
+T
+SVC also has a problem with the zero infalted dataset. Here the zeroes are purposfully excluded while determining the classes and get their own class.
+here the decision can be made whether
 
 ## Results
 
-## How spatial resolution seems to change the outcome?
-
-Generally 
-
-## How temporal resoltion changed the outcome?
-
-Mid temporal resoltion seems to be the best so 4h or sometimes 1 seems to overall be the best performing
 
 
 ## Further Improvement
 
+In case, we want to keep using SVMs. We would try getting a good performance first to be able to test different things quickly. We would also consider more different approaches towards datasets with a lot of zeroes. These include approaches such as ZeroInflatedRegressor[@vincent_d_warmerdam_2026_21210295] where you use both a Classifier as well as a Regression. We have tried this but it was not fully working on ourndataset.
+
+An even more important step would be to do the data preparation in a way that we end up with less zeroes in our dataset.
+
+
+In the event that an exchange of support vector machines (SVMs) to other models with different approaches is considered, models that demonstrate greater efficacy with the target, including a significant amount of zeros, should be considered. One example that illustrates this is ZeroInflatedPoisson[@josef_perktold_2024_10984387].
+
+
+
+The next time we would find us with a big dataset, instead of finding the first thing should be to fit the model in a reasonable time.
+Once this is established the model fitting can be achieved.
+We need to either change the way the data preparation is done and potentially exclude spatial units outside the city which are shown to have a lot of zeroes.
+Or change to a model which can better handle an excess of zeroes. One of such models would be the ZeroInflatedPoisson[@josef_perktold_2024_10984387]-
 The first improvement we would recommend it to use data, that does not consist of a lot of trip count zero.
 This lead to bad convergance during the grid search as well as the model fitting.
 The next time we would also recommend to directly develop the model to run on GPU due to the significant amount of data.
 But overall we would not recommend to use SVMs for this kind of data especially for classification there are models which can handle more similar data better.
-
