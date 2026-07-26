@@ -34,6 +34,8 @@
 
 : Spatial representations used in the analysis. {#tbl-spatial-representations}
 
+![Pickup and drop-off demand by Community Area.](report_assets/figures/main/descriptive_community_demand.png){#fig-descriptive-community-demand width=85%}
+
 ![Demand sparsity by spatial and temporal resolution.](report_assets/figures/main/descriptive_resolution_comparison.png){#fig-descriptive-resolution width=85%}
 
 | Metric | Mean | Median | p95 | p99 |
@@ -1464,7 +1466,7 @@ These are the changes we made during the developement of the svm in steps and wh
 
 ### Current Result SVC
 
-![Statistics of SVC](./report_assets/figures/appendix/svc_hexa.png){#fig-heatmap width=80%}
+![Statistics of SVC](./report_assets/figures/appendix/svc_hexa.png){#fig-svc-classification-results width=80%}
 
 The current result of the SVC does not look good. Due to the focus on the SVR, we were unable to further develope this model[@sklearn_api; @pedregosa2011scikit].
 
@@ -1503,6 +1505,10 @@ The coefficient increases linearly across the eight timesteps, yielding:
 | Optimizer | — | Adam |
 
 : Hyperparameter settings for Q-Learning and DQN. {#tbl-rl-hyperparams}
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-q-schedule >}}
+
+{{< embed notebooks/04_01_smart_charging_reinforcement_learning.ipynb#fig-rl-dqn-schedule >}}
 
 ### Training Convergence
 
