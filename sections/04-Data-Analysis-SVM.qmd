@@ -20,15 +20,16 @@ We started the process with a simple kernel which we then developed into a pipel
 During the process we realized the dataset contains a significant amount of data which slowed the training down immensely.
 Therefore, we had to place the focus of the pipeline on runtime reduction for a while.
 However, once this was resolved, enhancing the SVM's performance became the primary concern.
-We implemented the pipeline for SVR with models from scikit-learn[]. The SVR/LinearSVR model was changed to the equivalent model from cuml[@cuml], which was still not working perfectly. As a result we trained the model on the GPU with cuml[@cuml].
-Additionally, in the process we found a bug in cuml which left us unable to train the model on the whole dataset. 
+We developed a pipeline for SVR with models from scikit-learn[]. The SVR/LinearSVR model was changed to the equilifiant model form cuml[@cuml]. 
+Due to this still not working perfectly the model was trained on the GPU with cuml[@cuml].
+During this we found a bug in cuml which left us unable to train the model on the whole dataset. 
 Further information can be found in the appendix. 
 
 
 ## Results
 
-{{< embed notebooks/03_04_predictive_analytics_svm_comparison.ipynb#compare_to_baseline>}}
-{{< embed notebooks/03_04_predictive_analytics_svm_comparison.ipynb#heat_map_svm>}}
+![Comparison between baseline and svm model](report_assets/figures/svm_baseline_comparison.png){#fig-heatmap width=80%}
+![Heatmap of all combination of SVM](report_assets/figures/svm_heatmap.png){#fig-heatmap width=80%}
 
 We compared the SVR model to three baseline models.
 The baseline models consists of zero, global median and the mean of the time and spatial unit.
@@ -55,12 +56,13 @@ The performance of the community areas is especially poor for the twenty-four ho
 
 
 ## SVC
-The classification was developed on the side and ran on all the spatial units, but only with the four-hour time frame.
-T
-SVC also has a problem with the zero inflated dataset. Here the zeroes are excluded on purpose while determining the classes and get their own class.
-here the decision can be made whether 
 
-## Results
+The classification was developed on the side and run on all the spatial units.
+The brackets were determined after a thorough the data. Presently, these brackets are hard coded to provide a comprehensible representation.
+These brackets were decided on after analysing the data.
+These should show how in different application there might be an indication if there is zero, low, middle, high and very high.  
+Due to the significant presence of zeroes, the classes are being balanced. Otherwise, zeroes would dominate, particularly the lower classes.
+This could be a valid approach, if applied in the future and the bins might need to be changed.
 
 
 
@@ -68,7 +70,7 @@ here the decision can be made whether
 
 In the case of continuing the use of SVMs, first, we would try achieving a good performance, to test different things quickly. We would also consider testing more approaches regarding datasets with many zeroes. These include approaches such as ZeroInflatedRegressor[@vincent_d_warmerdam_2026_21210295] where both classifier and regression are used. We attempted this but it did not completely work on our dataset.
 
-Furthermore, an even more important step would be to reduce the zeroes in the dataset during the data preparation.
+An even more important step would be to do the data preparation in a way that we end up with less zeroes in our dataset. 
 
 
 In the event that an exchange of SVMs to other models with different approaches is considered, models that demonstrate greater efficacy with the target, including a significant amount of zeros, should be considered. One example that illustrates this is ZeroInflatedPoisson[@josef_perktold_2024_10984387].

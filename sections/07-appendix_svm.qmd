@@ -1,7 +1,7 @@
 # Appendix SVM
 
 ## Bug found in cuml
-Cuml appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time.
+Cuml appears to encounter challenges when confronted with substantial data sets, resulting in negative R2 values and a progressive decline in performance over time. This seems to happen at with datasets greater than 100_000. Other similar bugs seem to have been found before.
 
 ## Steps in developing SVM
 
@@ -22,4 +22,8 @@ These are the changes we made during the developement of the svm in steps and wh
 
 
 ## Pipeline SVR/SVC
--
+- TransformedTargetRegressor (not part of SVC)
+- StandardScaler
+- Nystroem
+- SVR
+- TransformedTargetRegressors StandardScaler
