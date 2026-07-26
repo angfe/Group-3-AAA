@@ -9,16 +9,13 @@ anonymized taxi ID, a start time, a pickup centroid and a pickup Community Area.
 Duplicate taxi/start/location combinations and implausible distance, duration or
 payment values are removed; the thresholds are reported in
 @tbl-cleaning-rules. Drop-off information is not required because pickup demand
-is the target.
-
-Weather observations are reduced to one quality-controlled record per station
+is the target. Weather observations are reduced to one quality-controlled record per station
 and hour and converted into temperature, precipitation, wind and condition
 features. Remaining gaps are interpolated within a station. Spatial geometries
 are repaired, and points of interest are counted for each spatial system. Since
 source Census IDs and the selected boundaries can refer to different vintages,
 unique pickup centroids are spatially joined to the canonical Census polygons
-[@chicagoCensusTracts].
-Trips without a valid reconstructed assignment remain available for the
+[@chicagoCensusTracts]. Trips without a valid reconstructed assignment remain available for the
 citywide Community Area description but are excluded from the common
 cross-resolution population.
 
@@ -31,9 +28,7 @@ cyclical time encodings, holidays, nearest-station weather and point-of-interest
 counts. Zero-demand rows are retained because they represent real operating
 conditions. Lagged demand and trip outcomes are excluded: the task estimates
 expected demand for a location and context rather than forecasting interval
-$t+1$ from interval $t$.
-
-The 485 complete model-period days are assigned randomly, with seed 42, to 339
+$t+1$ from interval $t$. The 485 complete model-period days are assigned randomly, with seed 42, to 339
 training, 73 validation and 73 test days. Complete calendar days are grouped, so
 one day never spans several partitions, while randomization avoids a split
 defined by one particular season. Since the models use no lagged demand and are

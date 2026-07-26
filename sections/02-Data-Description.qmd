@@ -11,18 +11,8 @@ Airport, and each spatial unit is linked to its nearest station
 [@iowaMesonetASOS]. OpenStreetMap features are obtained through OSMnx and
 grouped into food and drink venues, train stations, shops and landmarks
 [@openStreetMapContributors]. Illinois public holidays
-complete the temporal context [@pythonHolidays].
-
-| Source | Provider | Coverage | Role |
-| --- | --- | --- | --- |
-| Taxi trips | Chicago Data Portal | 2024-01-01 to 2026-04-30 | Trips and pickup demand |
-| Spatial boundaries | Chicago Data Portal | Chicago | Community Areas and Census Tracts |
-| Weather | Iowa Environmental Mesonet | MDW, ORD and IGQ | Hourly weather context |
-| Points of interest | OpenStreetMap via OSMnx | Chicago | Spatial context |
-
-: Data sources used in the analysis. {#tbl-data-sources}
-
-In the cleaned taxi data, one row represents one trip; in the model-ready data,
+complete the temporal context [@pythonHolidays]. A summary of the data sources, providers, coverage and analytical roles is
+provided in @tbl-data-sources in the Appendix. In the cleaned taxi data, one row represents one trip; in the model-ready data,
 one row represents a spatial unit during a time interval. The target,
 `trip_count`, counts trip starts and includes genuine zero-demand observations.
 Predictors describe information available before a pickup occurs, including
@@ -39,9 +29,7 @@ cells and 976 H3 resolution-8 cells at 1-hour, 4-hour and 24-hour intervals
 cleaned trips with a valid pickup Community Area. Cross-resolution comparisons
 and the GMM use a common subset of 6,049,435 trips that can also be assigned to a
 canonical Census Tract. This common population ensures that differences between
-spatial systems result from aggregation rather than trip coverage.
-
-The public data contain privacy-protected area centroids rather than exact
+spatial systems result from aggregation rather than trip coverage. The public data contain privacy-protected area centroids rather than exact
 pickup coordinates. H3 assignment changes the aggregation geometry but cannot
 recover street-level precision. Missing Census identifiers are also not evenly
 distributed across Chicago, so the filtered population may have different local

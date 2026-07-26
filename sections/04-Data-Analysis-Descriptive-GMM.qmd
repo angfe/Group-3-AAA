@@ -6,9 +6,7 @@ The typical trip is shorter and cheaper than its mean suggests
 (@tbl-trip-summary). Median distance is 3.91 miles, median duration is 16.05
 minutes and median fare is USD 15.25, compared with means of 7.15 miles, 21.06
 minutes and USD 22.07. Long airport and cross-city trips create these
-right-skewed distributions.
-
-Demand is lowest around 03:00 and rises sharply after 06:00
+right-skewed distributions. Demand is lowest around 03:00 and rises sharply after 06:00
 (@fig-descriptive-temporal). It reaches about 1,156 pickups per date-hour at
 17:00. Thursday has the highest average daily demand at roughly 18,098 trips,
 while Sunday has the lowest at about 12,059. The working-day afternoon peak is
@@ -16,7 +14,7 @@ consistent with commuting and business activity. Median distance and fare rise
 during the low-demand early morning, when airport trips plausibly represent a
 larger demand share.
 
-![Temporal pickup-demand patterns in the complete cleaned population. Hourly and weekday values are averages over observed dates; monthly values are average daily pickups.](report_assets/figures/main/descriptive_temporal_patterns.png){#fig-descriptive-temporal width=92%}
+![Temporal pickup-demand patterns.](report_assets/figures/main/descriptive_temporal_patterns.png){#fig-descriptive-temporal width=92%}
 
 Near North Side, O'Hare, Loop and Near West Side dominate pickup demand
 (@fig-descriptive-community-demand). The five leading Community Areas account
@@ -26,22 +24,18 @@ consistent with employment, tourism and nightlife, while O'Hare represents a
 separate airport market. The pickup/drop-off ratio remains approximate because
 drop-off locations are less complete.
 
-![Pickup and drop-off demand by Community Area in the complete cleaned population. Both panels use the same logarithmic scale.](report_assets/figures/main/descriptive_community_demand.png){#fig-descriptive-community-demand width=82%}
+![Pickup and drop-off demand by Community Area.](report_assets/figures/main/descriptive_community_demand.png){#fig-descriptive-community-demand width=82%}
 
 Resolution strongly affects target sparsity. Among Community Area-hour
 combinations, 91.58% have zero demand; the shares are 98.03% for Census Tracts
 and 98.52% for H3 resolution 8. Daily aggregation reduces these values to
-76.76%, 93.42% and 95.07%, respectively
-(@fig-descriptive-resolution). Finer units provide more local detail but many
-more zero observations. H3 resolution 7 is a middle ground, whereas Community
-Areas are easier to interpret but hide local variation. Observed inter-trip
-gaps have a median of 30 minutes and a mean of 68.45 minutes, but rounded
-timestamps and unknown shifts prevent interpreting them as exact idle time
-(@fig-descriptive-inter-trip-gap).
-
-![Effect of spatial and temporal aggregation on complete-panel sparsity and demand in active bins. All configurations use the same filtered trip population.](report_assets/figures/main/descriptive_resolution_comparison.png){#fig-descriptive-resolution width=85%}
-
-Operationally, vehicle availability should concentrate on central Chicago and
+76.76%, 93.42% and 95.07%, respectively; the full comparison is shown in
+@fig-descriptive-resolution in the Appendix. Finer units provide more local
+detail but many more zero observations. H3 resolution 7 is a middle ground,
+whereas Community Areas are easier to interpret but hide local variation.
+Observed inter-trip gaps have a median of 30 minutes and a mean of 68.45
+minutes, but rounded timestamps and unknown shifts prevent interpreting them as
+exact idle time (@fig-descriptive-inter-trip-gap). Operationally, vehicle availability should concentrate on central Chicago and
 O'Hare, particularly during weekday afternoons. Predictive results should also
 separate zero-, low- and high-demand cases, since a low overall error can hide
 poor performance in the locations where capacity matters most.
@@ -54,9 +48,7 @@ with scikit-learn [@scikitLearnGaussianMixture].
 The fit uses the 6,049,435 trips with Census-based centroids; Community Area
 centroids are excluded because millions of observations repeated at only 77
 coarse points would produce artificial peaks. No area label or trip attribute
-enters the model.
-
-Model selection uses a fixed 250,000-trip reservoir sample whose coordinate
+enters the model. Model selection uses a fixed 250,000-trip reservoir sample whose coordinate
 shares correlate at 0.999967 with the eligible population. We compare 116
 candidates covering 2 to 30 components and four covariance structures. The
 Bayesian Information Criterion is used for the initial ranking
@@ -64,9 +56,7 @@ Bayesian Information Criterion is used for the initial ranking
 repeated centroids, so candidates must also converge, have at least 0.25%
 component weight and maintain a minimum standard deviation of 50 metres. These
 safeguards select tied covariance with 17 components; full diagnostics are
-shown in @fig-gmm-selection in the appendix.
-
-The selected GMM confirms the Community Area ranking but adds detail within the
+shown in @fig-gmm-selection in the appendix. The selected GMM confirms the Community Area ranking but adds detail within the
 largest districts (@fig-gmm-community-comparison). O'Hare forms the largest
 component with 22.1% of sampled eligible demand. Near North Side, Loop, O'Hare
 and Near West Side together contain 90.2% of eligible trips in the
@@ -76,7 +66,7 @@ therefore the simpler result for district-level planning; the GMM is useful for
 positioning vehicles within the large central demand areas and across
 administrative borders.
 
-![Administrative Community Area demand shares compared with the continuous density of the selected GMM. The GMM separates several local modes within the central high-demand areas while confirming the same dominant geography.](report_assets/figures/main/gmm_community_comparison.png){#fig-gmm-community-comparison width=86%}
+![Community Area demand and selected GMM density.](report_assets/figures/main/gmm_community_comparison.png){#fig-gmm-community-comparison width=86%}
 
 The GMM still describes only 469 distinct published Census centroids, not
 street-level pickups. Its tied covariance stabilizes the fit but forces all
