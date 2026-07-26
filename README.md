@@ -21,7 +21,7 @@ We use `uv` to manage dependencies. Run the following commands in the root direc
 
 ```bash
 
-uv run python -m ipykernel install --user --name team-project-template --display-name "Python (Team Project Template)"
+uv run python -m ipykernel install --user --name team-project-template --display-name "Group 3 Kernel"
 ```
 
 This will create a `.venv` directory and register the Python kernel so Quarto can find it. You can change the `--name` if you prefer, but make sure to select the correct kernel in your editor (e.g., VS Code or Jupyter).
