@@ -1,8 +1,47 @@
 # Data Description
 
-Analyze	taxi demand	patterns:	Specifically	show	how	these patterns	
-(start	time,	trip	length,	start	and	end	location,	price,	average	idle	time	between	trips,	and	so	on)	for	the	
-given	 sample	 varies in	 different	 spatio-temporal	 resolution (i.e.,	 census	 tract vs. varying hexagon	
-diameter	and/or	temporal	bin	sizes).	Give	possible	reasons	for	the	observed	patterns.	
-Furthermore,	can	you	identify	spatial	hot	spots	 for	trip	demand	using	Gaussian	Mixture	Models (i.e.,	
-using	Spatial	Kernel	Density	Estimation)?
+## Data Sources and Scope
+
+The analysis combines Chicago taxi trips from 1 January 2024 to 30 April 2026
+with spatial boundaries, weather, calendar information and points of interest.
+The predictive models use the more recent period from 1 January 2025 onwards.
+Hourly weather observations come from Midway, O'Hare and Lansing Municipal
+Airport, and each spatial unit is linked to its nearest station. OpenStreetMap
+features are grouped into food and drink venues, train stations, shops and
+landmarks. Illinois public holidays complete the temporal context.
+
+| Source | Provider | Coverage | Role |
+| --- | --- | --- | --- |
+| Taxi trips | Chicago Data Portal | 2024-01-01 to 2026-04-30 | Trips and pickup demand |
+| Spatial boundaries | Chicago Data Portal | Chicago | Community Areas and Census Tracts |
+| Weather | Iowa Environmental Mesonet | MDW, ORD and IGQ | Hourly weather context |
+| Points of interest | OpenStreetMap via OSMnx | Chicago | Spatial context |
+
+: Data sources used in the analysis. {#tbl-data-sources}
+
+In the cleaned taxi data, one row represents one trip; in the model-ready data,
+one row represents a spatial unit during a time interval. The target,
+`trip_count`, counts trip starts and includes genuine zero-demand observations.
+Predictors describe information available before a pickup occurs, including
+location, time, weather, holidays and nearby points of interest. Distance, fare
+and drop-off information are excluded from prediction because they are only
+known after a trip has started.
+
+## Spatial Coverage and Limitations
+
+We compare 77 Community Areas, 878 canonical Census Tracts, 163 H3 resolution-7
+cells and 976 H3 resolution-8 cells at 1-hour, 4-hour and 24-hour intervals
+(@tbl-spatial-representations). General descriptive results use all 13,386,706
+cleaned trips with a valid pickup Community Area. Cross-resolution comparisons
+and the GMM use a common subset of 6,049,435 trips that can also be assigned to a
+canonical Census Tract. This common population ensures that differences between
+spatial systems result from aggregation rather than trip coverage.
+
+The public data contain privacy-protected area centroids rather than exact
+pickup coordinates. H3 assignment changes the aggregation geometry but cannot
+recover street-level precision. Missing Census identifiers are also not evenly
+distributed across Chicago, so the filtered population may have different local
+demand shares. Timestamps are rounded to 15-minute intervals, taxi IDs are
+anonymized, and routes and driver shifts are unavailable. These restrictions
+limit street-level conclusions and make inter-trip gaps only an approximation of
+idle time.

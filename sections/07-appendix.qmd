@@ -1,4 +1,70 @@
+{{< pagebreak >}}
+
 # Appendix {.appendix}
+
+## Supplementary Data and Preparation Material
+
+| Variable | Retained range | Purpose |
+| --- | --- | --- |
+| Distance | $0 < miles \leq 250$ | Remove zero and implausibly long trips |
+| Duration | $59 < seconds \leq 10{,}800$ | Retain trips of about 1 minute to 3 hours |
+| Fare | $0 < fare \leq 500$ | Require a positive plausible fare |
+| Tips | $0 \leq tips \leq 200$ | Remove negative or extreme values |
+| Tolls | $0 \leq tolls \leq 100$ | Remove negative or extreme values |
+| Extras | $0 \leq extras \leq 100$ | Remove negative or extreme values |
+| Trip total | $0 < total \leq 1{,}000$ | Require a positive plausible total |
+
+: Main plausibility rules applied to taxi trips. {#tbl-cleaning-rules}
+
+| Spatial representation | Units | Geometry | Interpretability |
+| --- | ---: | --- | --- |
+| Community Areas | 77 | Administrative | High |
+| Census Tracts | 878 | Administrative | Medium |
+| H3 r7 | 163 | Regular grid | Medium |
+| H3 r8 | 976 | Regular grid | Low |
+
+: Spatial representations used in the analysis. {#tbl-spatial-representations}
+
+| Metric | Mean | Median | p95 | p99 |
+| --- | ---: | ---: | ---: | ---: |
+| Distance (miles) | 7.15 | 3.91 | 18.41 | 26.80 |
+| Duration (minutes) | 21.06 | 16.05 | 53.55 | 75.00 |
+| Fare (USD) | 22.07 | 15.25 | 49.50 | 69.75 |
+| Trip total (USD) | 27.11 | 17.81 | 65.62 | 96.00 |
+
+: Distributional summary of the complete cleaned trip population. {#tbl-trip-summary}
+
+![Distributions of trip distance, duration, fare and total payment in a fixed 150,000-trip reservoir sample of the complete cleaned population. Values above the sample p99 are omitted from each panel for readability.](report_assets/figures/appendix/descriptive_trip_distributions.png){#fig-descriptive-trip-distributions width=90% fig-pos="H"}
+
+![Hourly mean and median of retained gaps between consecutive observed trips of the same anonymized taxi.](report_assets/figures/appendix/descriptive_inter_trip_gap.png){#fig-descriptive-inter-trip-gap width=90% fig-pos="H"}
+
+## Supplementary GMM Diagnostics
+
+![GMM candidate comparison across covariance structures and K=2--30. The selected tied-covariance model with K=17 is the best BIC candidate that satisfies the component-spread and minimum-weight safeguards.](report_assets/figures/appendix/gmm_model_selection.png){#fig-gmm-selection width=95% fig-pos="H"}
+
+| Component | Community Area at mean | Weight |
+| ---: | --- | ---: |
+| 1 | O'Hare | 22.1% |
+| 2 | Near West Side | 12.1% |
+| 3 | Loop | 11.9% |
+| 4 | Loop | 11.2% |
+| 5 | Near North Side | 11.1% |
+| 6 | Near North Side | 9.4% |
+| 7 | Near South Side | 5.0% |
+| 8 | Near North Side | 4.9% |
+
+: Largest components of the selected tied-covariance GMM. {#tbl-gmm-components}
+
+All components share a major standard deviation of 0.356 km, a minor standard
+deviation of 0.162 km and a 95% ellipse area of 1.085 km².
+
+![Component means and 95% probability ellipses of the selected tied-covariance GMM. Ellipses are contours rather than hard assignment boundaries.](report_assets/figures/appendix/gmm_component_ellipses.png){#fig-gmm-component-ellipses width=90% fig-pos="H"}
+
+![GMM density surfaces for four six-hour windows using the selected spatial model structure.](report_assets/figures/appendix/gmm_temporal_windows.png){#fig-gmm-temporal-windows width=90% fig-pos="H"}
+
+{{< pagebreak >}}
+
+## Neural-Network Details
 
 | Component | Input dimension | Output dimension | Activation |
 |---|---:|---:|---|
@@ -16,6 +82,8 @@ The spatial bias is implemented as a one-dimensional embedding. It represents an
 additive spatial intercept rather than a multidimensional representation-learning
 embedding. Index zero is reserved for spatial units not observed in the training
 split and has no learned effect.
+
+{{< pagebreak >}}
 
 ## Neural-network baseline training configuration {#sec-nn-baseline-training}
 
@@ -43,6 +111,19 @@ split and has no learned effect.
 
 ## Neural-network baseline validation results {#sec-nn-baseline-results}
 
+| Model | NN MAE | Naive baseline MAE | MAE skill score |
+|---|---:|---:|---:|
+| Census Tracts, 1h | 0.1396 | 0.1402 | 0.0043 |
+| Community Areas, 1h | 1.3758 | 1.2853 | -0.0705 |
+| Community Areas, 4h | 5.4196 | 4.6133 | -0.1748 |
+| Census Tracts, 4h | 0.5584 | 0.4659 | -0.1985 |
+| H3 r7, 1h | 0.7556 | 0.6220 | -0.2148 |
+| H3 r7, 4h | 2.9352 | 2.2093 | -0.3286 |
+| H3 r7, 24h | 15.0754 | 11.1707 | -0.3495 |
+| Census Tracts, 24h | 3.3413 | 2.2846 | -0.4625 |
+| Community Areas, 24h | 100.9842 | 23.6039 | -3.2783 |
+
+: Validation results of the neural-network baseline models. {#tbl-nn-baseline-results}
 ```{python}
 #| label: tbl-nn-baseline-results
 #| tbl-cap: "Validation results of the neural-network baseline models"

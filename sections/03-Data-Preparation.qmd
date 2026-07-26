@@ -1,61 +1,42 @@
 # Data Preparation
 
-Task:
-"""
-in	other	
-words,	your	method	should predict	for	each	spatial	unit	(in	whatever	spatial	layer	of	analysis	you	decide	
-on,	e.g.,	hexagon	or census	tract)	and	time-basket (e.g.,	08am-11.59am) the	taxi demand.	Important:	It	
-is	not	 your	goal	 to	predict	 hour	x+1	demand	given	 hour	x	demand,	 rather	 to	produce	an	answer	 to	
-questions	like	“what	demand	can	we	expect	on	a	rainy	Sunday	from	10	– 11	am	around	the	outskirts	of	
-the	city”.	Also advise a	reasonable	validation	strategy	for	your	prediction	model	(i.e.,	definition	of	test,	
-training	data	etc).
-"""
+## Cleaning and Spatial Harmonization
 
-- Data sources: Taxi data, weather data, Census tracts, community areas, Point of interest data
+Preparation follows a Bronze-Silver-Gold structure. Bronze preserves the source
+data as Parquet, Silver applies common quality and spatial rules, and Gold
+creates the complete panels used for modelling. Taxi records must contain an
+anonymized taxi ID, a start time, a pickup centroid and a pickup Community Area.
+Duplicate taxi/start/location combinations and implausible distance, duration or
+payment values are removed; the thresholds are reported in
+@tbl-cleaning-rules. Drop-off information is not required because pickup demand
+is the target.
 
-- Taxi data was downloaded from the Chicago Data Portal via API
-- Full run is from first january 2024 to first may 2026
-- The sample run uses one reproducible, contiguous 14-day window
-  (`2026-04-13` through `2026-04-26`, inclusive). This preserves complete
-  weekdays, weekends, and daily demand cycles while keeping notebook runtimes
-  short. A 400,000-trip cap is only a safety guard; reaching it is treated as
-  an invalid, potentially truncated sample.
+Weather observations are reduced to one quality-controlled record per station
+and hour and converted into temperature, precipitation, wind and condition
+features. Remaining gaps are interpolated within a station. Spatial geometries
+are repaired, and points of interest are counted for each spatial system. Since
+source Census IDs and the selected boundaries can refer to different vintages,
+unique pickup centroids are spatially joined to the canonical Census polygons.
+Trips without a valid reconstructed assignment remain available for the
+citywide Community Area description but are excluded from the common
+cross-resolution population.
 
-- Initally a data profiling was conducted to better understand the data, find null values and plausibility issues and coverage of the Data
-- This data profiling layed down the basis for the following data-prep steps
+## Complete Panels and Predictive Split
 
-- Data was prepared following a simple bronze-silver-gold pipeline logic, whereby each dataset runs through the levels:
-- Bronze represents the raw data stored as parquet file
-- Silver adjusted the data quality, missing values, inadequate data, consistency checks
-- Gold aggregates data, joins different data sets
+For each spatial system and each 1-hour, 4-hour and 24-hour interval, all possible
+spatial-time combinations are generated before observed pickup counts are
+joined. Missing counts are set to zero. The resulting twelve panels include
+cyclical time encodings, holidays, nearest-station weather and point-of-interest
+counts. Zero-demand rows are retained because they represent real operating
+conditions. Lagged demand and trip outcomes are excluded: the task estimates
+expected demand for a location and context rather than forecasting interval
+$t+1$ from interval $t$.
 
-- Regarding gold / generating of the temporal-spatial dataset
-- First we created a dataframe containing the temporal unit, i. e. 1h, 2h or 4h. This dataframe contained nothing but the timestamps
-- We integrated the weather data to this dataframe and also holidays
-- Next we merged the temporal dataframe with the spatial units, i. e. census tracts, hexagons and community areas
-- This gave us the keys of the final dataset and we could aggregate the taxi data into this dataframe
-
-Thereby creating certain data charateristics that become problematic and need to be addressed during predictive tasks:
-- Most Temporal-Spatial units contain no or only very small demand (e. g. 3 am in some outer area of chicago) while only few contain high demand
-- Therefore we decided to use community area as main spatial unit
-
-## Summary of the Central Data-Preparation Steps
-
-- Load the taxi, weather, spatial-boundary, and OpenStreetMap point-of-interest data and store the raw inputs as Parquet files in the bronze layer.
-- Profile the raw data for missing values, duplicates, temporal coverage, and implausible trip, fare, and location values; use these findings to define the subsequent cleaning rules.
-- Create the silver taxi dataset by removing duplicate or implausible trips, requiring valid pickup information, and retaining trips with positive fares and totals, non-negative cost components, distances of more than 0 and at most 250 miles, and durations between 1 minute and 3 hours.
-- Restrict the weather observations to the taxi-data period, repair the census-tract and community-area geometries, standardize their identifiers, and generate an H3 grid covering Chicago.
-- Build the gold layer by assigning taxi trips and POIs to H3 cells, census tracts, and community areas and by excluding pickup locations outside the Chicago grid.
-- Construct complete 1-, 2-, and 4-hour time grids and enrich them with aggregated and imputed weather data, Illinois holiday indicators, and cyclical month, weekday, and hour features.
-- Cross the temporal grids with every spatial unit, add POI counts by category, and aggregate taxi pickups as `trip_count`; explicitly retain spatial-temporal combinations with zero demand.
-- Produce comparable demand datasets for all temporal and spatial resolutions, with community areas used as the principal modeling unit because finer resolutions contain a particularly high proportion of sparse or zero-demand observations.
-- Create reproducible train, validation, and test datasets (approximately 70/15/15), grouping complete calendar days into the same split and checking that no dates leak across the partitions.
-
-
-
-- 4 Datasets in silver:
-    - Community area: complete data set as community area is always as spatial unit given
-    - Census tracts: is more granular than community area and not always given (number of missing values), therefore we remove data without census_tract here
-    - Hexagon: the hexagons are build on the census_tracts and therefore only reasonable when we have census_tract data
-    - community area filtered: to make a fair comparision between the spatial units we create a filtered dataset of community area
-    => Thereby we have one main dataset on community area and for a fair comparision of spatial units we have 3 filtered datasets 
+The 485 complete model-period days are assigned randomly, with seed 42, to 339
+training, 73 validation and 73 test days. Complete calendar days are grouped, so
+one day never spans several partitions, while randomization avoids a split
+defined by one particular season. Since the models use no lagged demand and are
+not next-step forecasts, later training dates do not expose validation or test
+targets. Preprocessing and models are fitted on TRAIN, VAL supports model
+selection, and TEST remains untouched until the final comparison. All twelve
+panels use the same date assignment.
